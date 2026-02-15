@@ -1,0 +1,1285 @@
+// ===================================
+// CryptoTrader Pro v2 - Main App
+// ===================================
+
+class CryptoTraderApp {
+    constructor() {
+        this.data = {
+            trades: [],
+            positions: [],
+            strategies: [],
+            reminders: [],
+            portfolio: []
+        };
+        
+        this.chart = null;
+        this.syncInterval = null;
+        this.filterStartDate = null;
+        this.filterEndDate = null;
+        
+        this.init();
+    }
+    
+    async init() {
+        this.setupEventListeners();
+        this.setupAmountInputs();
+        this.loadFromCache();
+        await this.syncData();
+        this.setupAutoSync();
+        this.renderDashboard();
+    }
+    
+    setupAmountInputs() {
+        document.querySelectorAll('.amount-input').forEach(input => setupCommaInput(input));
+    }
+    
+    setupEventListeners() {
+        // Menu button (mobile)
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        });
+        
+        document.getElementById('sidebarOverlay').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        });
+        
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => this.handleNavigation(item));
+        });
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.addEventListener('click', () => this.handleNavigation(item));
+        });
+        
+        // Refresh
+        document.getElementById('refreshBtn').addEventListener('click', () => this.handleRefresh());
+        
+        // Settings
+        document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
+        document.getElementById('settingsClose').addEventListener('click', () => this.closeSettings());
+        document.getElementById('settingsCancel').addEventListener('click', () => this.closeSettings());
+        document.getElementById('settingsSave').addEventListener('click', () => this.handleSaveSettings());
+        document.getElementById('testConnection').addEventListener('click', () => this.handleTestConnection());
+        document.getElementById('hardRefreshBtn')?.addEventListener('click', () => this.hardRefresh());
+        
+        // Add buttons
+        document.getElementById('addTradeBtn')?.addEventListener('click', () => this.openTradeModal());
+        document.getElementById('addPositionBtn')?.addEventListener('click', () => this.openPositionModal());
+        document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
+        document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
+        
+        // Filter
+        document.getElementById('applyFilterBtn')?.addEventListener('click', () => this.applyDateFilter());
+        document.getElementById('resetFilterBtn')?.addEventListener('click', () => this.resetDateFilter());
+    }
+    
+    handleNavigation(item) {
+        const tab = item.dataset.tab;
+        
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll(`.nav-item[data-tab="${tab}"]`).forEach(i => i.classList.add('active'));
+        document.querySelectorAll('.bottom-nav-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll(`.bottom-nav-item[data-tab="${tab}"]`).forEach(i => i.classList.add('active'));
+        
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        
+        document.getElementById('sidebar').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        
+        this.renderTab(tab);
+    }
+    
+    renderTab(tab) {
+        switch (tab) {
+            case 'dashboard': this.renderDashboard(); break;
+            case 'trades': this.renderTradesTab(); break;
+            case 'positions': this.renderPositionsTab(); break;
+            case 'strategies': this.renderStrategiesTab(); break;
+            case 'reminders': this.renderRemindersTab(); break;
+            case 'analytics': this.renderAnalyticsTab(); break;
+        }
+    }
+    
+    async handleRefresh() {
+        const btn = document.getElementById('refreshBtn');
+        if (btn) btn.classList.add('spinning');
+        await this.syncData();
+        setTimeout(() => { if (btn) btn.classList.remove('spinning'); }, 1000);
+    }
+    
+    // ===== DATA SYNC =====
+    
+    async syncData() {
+        const syncStatus = document.getElementById('syncStatus');
+        if (syncStatus) {
+            syncStatus.classList.add('syncing');
+            const syncText = syncStatus.querySelector('.sync-text');
+            if (syncText) syncText.textContent = 'Syncing...';
+        }
+        
+        try {
+            if (!cryptoAPI.isConfigured()) {
+                this.loadDemoData();
+                if (syncStatus) {
+                    syncStatus.classList.remove('syncing');
+                    const syncText = syncStatus.querySelector('.sync-text');
+                    if (syncText) syncText.textContent = 'Demo Mode';
+                }
+                this.showToast('Running in Demo Mode', 'warning');
+                return;
+            }
+            
+            const result = await cryptoAPI.getAllData();
+            
+            this.data = {
+                trades: result.data.trades || [],
+                positions: result.data.positions || [],
+                strategies: result.data.strategies || [],
+                reminders: result.data.reminders || [],
+                portfolio: result.data.portfolio || []
+            };
+            
+            cacheManager.save(this.data);
+            
+            if (syncStatus) {
+                syncStatus.classList.remove('syncing', 'error');
+                const syncText = syncStatus.querySelector('.sync-text');
+                if (syncText) syncText.textContent = 'Synced';
+            }
+            
+            const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'dashboard';
+            this.renderTab(activeTab);
+            
+            this.showToast('Data synced!', 'success');
+        } catch (error) {
+            console.error('Sync error:', error);
+            if (syncStatus) {
+                syncStatus.classList.remove('syncing');
+                syncStatus.classList.add('error');
+                const syncText = syncStatus.querySelector('.sync-text');
+                if (syncText) syncText.textContent = 'Error';
+            }
+            this.showToast(error.message, 'error');
+        }
+    }
+    
+    loadDemoData() {
+        const today = getTodayStr();
+        const d = (offset) => {
+            const dt = new Date();
+            dt.setDate(dt.getDate() - offset);
+            return getDateStr(dt);
+        };
+
+        this.data = {
+            trades: [
+                { rowIndex: 2, date: d(0), pair: 'BTC/USDT', type: 'LONG', strategy: 'Breakout', entryPrice: 87200, exitPrice: 88450, quantity: 0.05, stopLoss: 86500, takeProfit: 89000, pnl: 62.50, pnlPercent: 1.43, status: 'CLOSED', notes: 'Clean breakout above 87k resistance with volume confirmation' },
+                { rowIndex: 3, date: d(1), pair: 'ETH/USDT', type: 'SHORT', strategy: 'Mean Reversion', entryPrice: 3420, exitPrice: 3380, quantity: 2, stopLoss: 3480, takeProfit: 3350, pnl: 80.00, pnlPercent: 1.17, status: 'CLOSED', notes: 'Faded the pump at daily resistance' },
+                { rowIndex: 4, date: d(1), pair: 'SOL/USDT', type: 'LONG', strategy: 'Trend Following', entryPrice: 185.5, exitPrice: 178.2, quantity: 10, stopLoss: 180, takeProfit: 200, pnl: -73.00, pnlPercent: -3.94, status: 'CLOSED', notes: 'Stopped out - overall market dumped' },
+                { rowIndex: 5, date: d(2), pair: 'BTC/USDT', type: 'LONG', strategy: 'Breakout', entryPrice: 86100, exitPrice: 87500, quantity: 0.08, stopLoss: 85500, takeProfit: 89000, pnl: 112.00, pnlPercent: 1.63, status: 'CLOSED', notes: 'Strong 4H candle close above MA' },
+                { rowIndex: 6, date: d(3), pair: 'DOGE/USDT', type: 'LONG', strategy: 'Momentum', entryPrice: 0.168, exitPrice: 0.175, quantity: 5000, stopLoss: 0.16, takeProfit: 0.19, pnl: 35.00, pnlPercent: 4.17, status: 'CLOSED', notes: 'Elon tweet pump, quick scalp' },
+                { rowIndex: 7, date: d(4), pair: 'ETH/USDT', type: 'LONG', strategy: 'Support Bounce', entryPrice: 3350, exitPrice: 3290, quantity: 1.5, stopLoss: 3300, takeProfit: 3500, pnl: -90.00, pnlPercent: -1.79, status: 'CLOSED', notes: 'Support broke, should have waited for confirmation' },
+                { rowIndex: 8, date: d(5), pair: 'BNB/USDT', type: 'LONG', strategy: 'Breakout', entryPrice: 620, exitPrice: 645, quantity: 2, stopLoss: 610, takeProfit: 660, pnl: 50.00, pnlPercent: 4.03, status: 'CLOSED', notes: 'Binance announcement catalyst' },
+                { rowIndex: 9, date: d(6), pair: 'XRP/USDT', type: 'SHORT', strategy: 'Mean Reversion', entryPrice: 2.35, exitPrice: 2.28, quantity: 500, stopLoss: 2.42, takeProfit: 2.20, pnl: 35.00, pnlPercent: 2.98, status: 'CLOSED', notes: 'Overbought on RSI at key level' },
+                { rowIndex: 10, date: d(7), pair: 'SOL/USDT', type: 'LONG', strategy: 'Trend Following', entryPrice: 175, exitPrice: 186, quantity: 8, stopLoss: 170, takeProfit: 195, pnl: 88.00, pnlPercent: 6.29, status: 'CLOSED', notes: 'Trend continuation after healthy pullback' },
+                { rowIndex: 11, date: d(8), pair: 'AVAX/USDT', type: 'LONG', strategy: 'Momentum', entryPrice: 38, exitPrice: 36.5, quantity: 30, stopLoss: 36, takeProfit: 42, pnl: -45.00, pnlPercent: -3.95, status: 'CLOSED', notes: 'Lost momentum after initial push' },
+            ],
+            positions: [
+                { rowIndex: 2, dateOpened: d(0), pair: 'BTC/USDT', type: 'LONG', strategy: 'Trend Following', entryPrice: 87800, currentPrice: 88200, quantity: 0.1, stopLoss: 86500, takeProfit: 92000, notes: 'Riding the daily trend' },
+                { rowIndex: 3, dateOpened: d(1), pair: 'ETH/USDT', type: 'LONG', strategy: 'Breakout', entryPrice: 3400, currentPrice: 3455, quantity: 3, stopLoss: 3300, takeProfit: 3700, notes: 'Breakout above descending trendline' },
+                { rowIndex: 4, dateOpened: d(0), pair: 'SOL/USDT', type: 'SHORT', strategy: 'Resistance Rejection', entryPrice: 190.5, currentPrice: 188.2, quantity: 15, stopLoss: 195, takeProfit: 178, notes: 'Double top at 190 resistance' },
+            ],
+            strategies: [
+                { rowIndex: 2, name: 'Breakout', description: 'Trade breakouts above key resistance with volume confirmation. Wait for candle close above level.', timeframe: '4H', indicators: 'Volume, RSI, Bollinger Bands', winRate: 68, totalTrades: 18, createdDate: d(60) },
+                { rowIndex: 3, name: 'Mean Reversion', description: 'Fade extreme moves back to VWAP or moving average. Best on ranging markets.', timeframe: '1H', indicators: 'VWAP, RSI, Stochastic', winRate: 62, totalTrades: 12, createdDate: d(45) },
+                { rowIndex: 4, name: 'Trend Following', description: 'Ride momentum with trailing stops. Enter on pullbacks to EMA in direction of trend.', timeframe: '1D', indicators: 'EMA 20/50, MACD, ADX', winRate: 58, totalTrades: 10, createdDate: d(30) },
+                { rowIndex: 5, name: 'Momentum', description: 'Catch momentum surges on altcoins. Quick in/out based on volume spike and RSI.', timeframe: '15M', indicators: 'RSI, Volume, OBV', winRate: 71, totalTrades: 7, createdDate: d(20) },
+            ],
+            reminders: [
+                { rowIndex: 2, date: d(0), time: '09:00', pair: 'BTC/USDT', message: 'Check BTC daily close above 88k resistance', type: 'PRICE_ALERT', status: 'ACTIVE' },
+                { rowIndex: 3, date: d(0), time: '14:00', pair: 'ETH/USDT', message: 'ETH Dencun upgrade - potential volatility', type: 'NEWS', status: 'ACTIVE' },
+                { rowIndex: 4, date: d(-1), time: '20:30', pair: '', message: 'FOMC Meeting Minutes Release', type: 'EVENT', status: 'ACTIVE' },
+                { rowIndex: 5, date: d(-2), time: '08:00', pair: 'SOL/USDT', message: 'Check SOL if it reclaims 190 level', type: 'STRATEGY', status: 'ACTIVE' },
+            ],
+            portfolio: [
+                { date: d(30), balance: 5000 },
+                { date: d(27), balance: 5180 },
+                { date: d(24), balance: 5320 },
+                { date: d(21), balance: 5150 },
+                { date: d(18), balance: 5640 },
+                { date: d(15), balance: 5890 },
+                { date: d(12), balance: 5720 },
+                { date: d(9), balance: 6280 },
+                { date: d(6), balance: 6530 },
+                { date: d(3), balance: 7100 },
+                { date: d(0), balance: 7354.50 },
+            ]
+        };
+    }
+    
+    loadFromCache() {
+        const cached = cacheManager.load();
+        if (cached && cached.data) this.data = cached.data;
+    }
+    
+    setupAutoSync() {
+        const settings = getSettings();
+        if (this.syncInterval) clearInterval(this.syncInterval);
+        if (settings.autoSync && cryptoAPI.isConfigured()) {
+            this.syncInterval = setInterval(() => this.syncData(), CONFIG.APP.AUTO_SYNC_INTERVAL);
+        }
+    }
+    
+    // ===== COMPUTED STATS =====
+    
+    getStats() {
+        const trades = this.data.trades || [];
+        const closed = trades.filter(t => t.status === 'CLOSED');
+        const wins = closed.filter(t => (parseFloat(t.pnl) || 0) > 0);
+        const losses = closed.filter(t => (parseFloat(t.pnl) || 0) <= 0);
+        
+        const totalPnL = closed.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0);
+        const winRate = closed.length > 0 ? (wins.length / closed.length * 100) : 0;
+        
+        const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + parseFloat(t.pnl), 0) / wins.length : 0;
+        const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + parseFloat(t.pnl), 0) / losses.length) : 0;
+        const profitFactor = avgLoss > 0 ? avgWin / avgLoss : 0;
+        const bestTrade = closed.length > 0 ? Math.max(...closed.map(t => parseFloat(t.pnl))) : 0;
+        const worstTrade = closed.length > 0 ? Math.min(...closed.map(t => parseFloat(t.pnl))) : 0;
+        
+        const portfolio = this.data.portfolio || [];
+        const currentBalance = portfolio.length > 0 ? portfolio[portfolio.length - 1].balance : getSettings().startingBalance;
+        
+        return {
+            totalTrades: closed.length,
+            openPositions: (this.data.positions || []).length,
+            totalPnL, winRate, wins: wins.length, losses: losses.length,
+            avgWin, avgLoss, profitFactor, bestTrade, worstTrade, currentBalance
+        };
+    }
+    
+    // ===== DASHBOARD =====
+    
+    renderDashboard() {
+        const stats = this.getStats();
+        const el = (id) => document.getElementById(id);
+        
+        if (el('totalPnL')) {
+            el('totalPnL').textContent = formatCurrency(stats.totalPnL);
+            el('totalPnL').className = `stat-value ${getValueClass(stats.totalPnL)}`;
+        }
+        if (el('winRate')) el('winRate').textContent = stats.winRate.toFixed(1) + '%';
+        if (el('totalTrades')) el('totalTrades').textContent = stats.totalTrades;
+        if (el('openPositions')) el('openPositions').textContent = stats.openPositions;
+        if (el('profitFactor')) el('profitFactor').textContent = stats.profitFactor.toFixed(2);
+        if (el('currentBalance')) el('currentBalance').textContent = formatCurrency(stats.currentBalance);
+        
+        this.renderPortfolioChart();
+        this.renderRecentTrades();
+        this.renderActiveReminders();
+    }
+    
+    renderPortfolioChart() {
+        const ctx = document.getElementById('portfolioChart');
+        if (!ctx) return;
+        if (this.chart) this.chart.destroy();
+        
+        const portfolio = this.data.portfolio || [];
+        const labels = portfolio.map(p => formatDate(p.date));
+        const balances = portfolio.map(p => p.balance);
+        
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Portfolio',
+                    data: balances,
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00ff88',
+                    pointBorderColor: '#0a0a0f',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a1a25',
+                        titleColor: '#a0a0b0',
+                        bodyColor: '#00ff88',
+                        borderColor: 'rgba(0,255,136,0.2)',
+                        borderWidth: 1,
+                        callbacks: { label: (ctx) => '$' + ctx.parsed.y.toLocaleString() }
+                    }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#606070', maxRotation: 45 } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#606070', callback: v => '$' + (v/1000).toFixed(1) + 'K' } }
+                }
+            }
+        });
+    }
+    
+    renderRecentTrades() {
+        const container = document.getElementById('recentTrades');
+        if (!container) return;
+        
+        const trades = this.data.trades || [];
+        if (trades.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No trades yet. Start logging!</p></div>';
+            return;
+        }
+        
+        const recent = [...trades].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+        
+        container.innerHTML = recent.map(t => {
+            const pnl = parseFloat(t.pnl) || 0;
+            return `
+                <div class="recent-item">
+                    <div class="recent-icon" style="color:${getPairColor(t.pair)}">●</div>
+                    <div class="recent-info">
+                        <div class="recent-title">${t.pair} <span class="type-badge ${t.type.toLowerCase()}">${t.type}</span></div>
+                        <div class="recent-date">${formatDate(t.date)} · ${t.strategy || '-'}</div>
+                    </div>
+                    <div class="recent-amount ${getValueClass(pnl)}">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    renderActiveReminders() {
+        const container = document.getElementById('activeReminders');
+        if (!container) return;
+        
+        const reminders = (this.data.reminders || []).filter(r => r.status === 'ACTIVE');
+        const icons = { PRICE_ALERT: '📊', NEWS: '📰', EVENT: '📅', STRATEGY: '⚡', GENERAL: '💡' };
+        
+        if (reminders.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No active reminders</p></div>';
+            return;
+        }
+        
+        container.innerHTML = reminders.slice(0, 4).map(r => `
+            <div class="reminder-card">
+                <div class="reminder-icon">${icons[r.type] || '💡'}</div>
+                <div class="reminder-info">
+                    <div class="reminder-msg">${r.message}</div>
+                    <div class="reminder-meta">${r.pair ? r.pair + ' · ' : ''}${formatDate(r.date)} ${r.time || ''}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // ===== TRADES TAB =====
+    
+    renderTradesTab() {
+        if (!this.filterStartDate || !this.filterEndDate) {
+            const now = new Date();
+            const twoWeeksAgo = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000));
+            this.filterStartDate = getDateStr(twoWeeksAgo);
+            this.filterEndDate = getDateStr(now);
+        }
+        
+        this.setupFilterDates();
+        
+        const trades = this.filterByDateRange(this.data.trades || [], this.filterStartDate, this.filterEndDate);
+        const tbody = document.getElementById('tradesTableBody');
+        if (!tbody) return;
+        
+        // Update summary
+        const totalPnL = trades.filter(t => t.status === 'CLOSED').reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0);
+        const wins = trades.filter(t => (parseFloat(t.pnl) || 0) > 0).length;
+        const losses = trades.filter(t => t.status === 'CLOSED' && (parseFloat(t.pnl) || 0) <= 0).length;
+        
+        const el = (id) => document.getElementById(id);
+        if (el('filterPnL')) {
+            el('filterPnL').textContent = formatCurrency(totalPnL);
+            el('filterPnL').className = `summary-value ${getValueClass(totalPnL)}`;
+        }
+        if (el('filterWins')) el('filterWins').textContent = wins;
+        if (el('filterLosses')) el('filterLosses').textContent = losses;
+        if (el('filterTotal')) el('filterTotal').textContent = trades.length;
+        
+        if (trades.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-cell">No trades for selected date range</td></tr>';
+            return;
+        }
+        
+        const sorted = [...trades].sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        tbody.innerHTML = sorted.map(t => {
+            const pnl = parseFloat(t.pnl) || 0;
+            const pnlPct = parseFloat(t.pnlPercent) || 0;
+            return `
+                <tr>
+                    <td class="mono-text">${formatDate(t.date)}</td>
+                    <td><span class="pair-badge" style="color:${getPairColor(t.pair)}">${t.pair}</span></td>
+                    <td><span class="type-badge ${t.type.toLowerCase()}">${t.type === 'LONG' ? '↑ LONG' : '↓ SHORT'}</span></td>
+                    <td class="mono-text">${t.strategy || '-'}</td>
+                    <td class="mono-text">${formatWithCommas(t.entryPrice)}</td>
+                    <td class="mono-text">${t.exitPrice ? formatWithCommas(t.exitPrice) : '—'}</td>
+                    <td class="mono-text">${t.quantity}</td>
+                    <td class="mono-text ${getValueClass(pnl)}">${pnl >= 0 ? '+' : ''}$${formatNumber(Math.abs(pnl))}</td>
+                    <td class="mono-text ${getValueClass(pnlPct)}">${formatPercent(pnlPct)}</td>
+                    <td class="actions-cell">
+                        <button class="action-btn view" onclick="app.viewTradeDetails(${t.rowIndex})">👁</button>
+                        <button class="action-btn edit" onclick="app.editTrade(${t.rowIndex})">✎</button>
+                        <button class="action-btn delete" onclick="app.deleteTrade(${t.rowIndex})">✕</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    setupFilterDates() {
+        const startInput = document.getElementById('filterStartDate');
+        const endInput = document.getElementById('filterEndDate');
+        if (startInput && !startInput._flatpickr) {
+            flatpickr(startInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d', theme: 'dark', defaultDate: this.filterStartDate, onChange: (s, d) => { this.filterStartDate = d; } });
+        }
+        if (endInput && !endInput._flatpickr) {
+            flatpickr(endInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d', theme: 'dark', defaultDate: this.filterEndDate, onChange: (s, d) => { this.filterEndDate = d; } });
+        }
+    }
+    
+    filterByDateRange(data, startDate, endDate) {
+        if (!data || data.length === 0 || !startDate || !endDate) return data || [];
+        return data.filter(item => {
+            const itemDate = getDateStr(item.date || item.dateOpened);
+            return itemDate >= startDate && itemDate <= endDate;
+        });
+    }
+    
+    applyDateFilter() {
+        const s = document.getElementById('filterStartDate');
+        const e = document.getElementById('filterEndDate');
+        if (s && e) {
+            this.filterStartDate = s.value;
+            this.filterEndDate = e.value;
+            if (this.filterStartDate > this.filterEndDate) { this.showToast('Start date must be before end date', 'warning'); return; }
+            this.renderTradesTab();
+            this.showToast('Filter applied!', 'success');
+        }
+    }
+    
+    resetDateFilter() {
+        const now = new Date();
+        const twoWeeksAgo = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000));
+        this.filterStartDate = getDateStr(twoWeeksAgo);
+        this.filterEndDate = getDateStr(now);
+        // Reset flatpickr instances
+        const s = document.getElementById('filterStartDate');
+        const e = document.getElementById('filterEndDate');
+        if (s?._flatpickr) s._flatpickr.setDate(this.filterStartDate, true);
+        if (e?._flatpickr) e._flatpickr.setDate(this.filterEndDate, true);
+        this.renderTradesTab();
+        this.showToast('Filter reset', 'info');
+    }
+    
+    // ===== TRADE MODAL =====
+    
+    openTradeModal(editData = null) {
+        const el = (id) => document.getElementById(id);
+        if (el('tradeForm')) el('tradeForm').reset();
+        if (el('tradeRowIndex')) el('tradeRowIndex').value = '';
+        
+        if (editData) {
+            if (el('tradeModalTitle')) el('tradeModalTitle').textContent = 'Edit Trade';
+            if (el('tradeRowIndex')) el('tradeRowIndex').value = editData.rowIndex;
+            if (el('tradeDate')) el('tradeDate').value = formatDateForInput(editData.date);
+            if (el('tradePair')) el('tradePair').value = editData.pair;
+            if (el('tradeType')) el('tradeType').value = editData.type;
+            if (el('tradeStrategy')) el('tradeStrategy').value = editData.strategy || '';
+            if (el('tradeEntry')) el('tradeEntry').value = editData.entryPrice;
+            if (el('tradeExit')) el('tradeExit').value = editData.exitPrice || '';
+            if (el('tradeQty')) el('tradeQty').value = editData.quantity;
+            if (el('tradeSL')) el('tradeSL').value = editData.stopLoss || '';
+            if (el('tradeTP')) el('tradeTP').value = editData.takeProfit || '';
+            if (el('tradeNotes')) el('tradeNotes').value = editData.notes || '';
+        } else {
+            if (el('tradeModalTitle')) el('tradeModalTitle').textContent = 'Log New Trade';
+            if (el('tradeDate')) el('tradeDate').value = getTodayStr();
+        }
+        
+        if (el('tradeModal')) el('tradeModal').classList.add('active');
+        
+        setTimeout(() => {
+            this.setupAmountInputs();
+            const dateInput = document.getElementById('tradeDate');
+            if (dateInput && !dateInput._flatpickr) {
+                flatpickr(dateInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d, Y', theme: 'dark' });
+            }
+        }, 100);
+    }
+    
+    closeTradeModal() {
+        const modal = document.getElementById('tradeModal');
+        if (modal) modal.classList.remove('active');
+    }
+    
+    async saveTradeEntry() {
+        const el = (id) => document.getElementById(id);
+        const rowIndex = el('tradeRowIndex')?.value;
+        const date = el('tradeDate')?.value;
+        const pair = el('tradePair')?.value;
+        const type = el('tradeType')?.value;
+        const entryPrice = parseFormattedNumber(el('tradeEntry')?.value);
+        
+        if (!date || !pair || entryPrice <= 0) {
+            this.showToast('Fill required fields (Date, Pair, Entry)', 'warning');
+            return;
+        }
+        
+        const exitPrice = parseFormattedNumber(el('tradeExit')?.value) || 0;
+        const quantity = parseFormattedNumber(el('tradeQty')?.value) || 1;
+        
+        let pnl = 0, pnlPercent = 0;
+        if (exitPrice > 0) {
+            pnl = type === 'LONG' ? (exitPrice - entryPrice) * quantity : (entryPrice - exitPrice) * quantity;
+            pnlPercent = type === 'LONG' ? ((exitPrice - entryPrice) / entryPrice * 100) : ((entryPrice - exitPrice) / entryPrice * 100);
+        }
+        
+        const data = {
+            date, pair, type,
+            strategy: el('tradeStrategy')?.value || '',
+            entryPrice, exitPrice: exitPrice || '',
+            quantity,
+            stopLoss: parseFormattedNumber(el('tradeSL')?.value) || '',
+            takeProfit: parseFormattedNumber(el('tradeTP')?.value) || '',
+            pnl: pnl.toFixed(2),
+            pnlPercent: pnlPercent.toFixed(2),
+            status: exitPrice > 0 ? 'CLOSED' : 'OPEN',
+            notes: el('tradeNotes')?.value || ''
+        };
+        
+        if (rowIndex) data.rowIndex = parseInt(rowIndex);
+        
+        try {
+            this.showToast('Saving...', 'info');
+            if (cryptoAPI.isConfigured()) {
+                if (rowIndex) await cryptoAPI.updateTrade(data);
+                else await cryptoAPI.addTrade(data);
+                this.closeTradeModal();
+                await this.syncData();
+            } else {
+                // Demo mode - add locally
+                if (rowIndex) {
+                    const idx = this.data.trades.findIndex(t => t.rowIndex == rowIndex);
+                    if (idx > -1) this.data.trades[idx] = { ...this.data.trades[idx], ...data };
+                } else {
+                    data.rowIndex = Date.now();
+                    this.data.trades.push(data);
+                }
+                this.closeTradeModal();
+                this.renderTab(document.querySelector('.nav-item.active')?.dataset.tab || 'trades');
+            }
+            this.showToast('Trade saved!', 'success');
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+    
+    editTrade(rowIndex) {
+        const item = this.data.trades.find(t => t.rowIndex === rowIndex);
+        if (item) this.openTradeModal(item);
+    }
+    
+    async deleteTrade(rowIndex) {
+        if (!confirm('Delete this trade?')) return;
+        try {
+            if (cryptoAPI.isConfigured()) {
+                await cryptoAPI.deleteTrade(rowIndex);
+                await this.syncData();
+            } else {
+                this.data.trades = this.data.trades.filter(t => t.rowIndex !== rowIndex);
+                this.renderTab(document.querySelector('.nav-item.active')?.dataset.tab || 'trades');
+            }
+            this.showToast('Deleted!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    viewTradeDetails(rowIndex) {
+        const t = this.data.trades.find(tr => tr.rowIndex === rowIndex);
+        if (!t) return;
+        
+        const pnl = parseFloat(t.pnl) || 0;
+        const container = document.getElementById('detailsList');
+        container.innerHTML = `
+            <div class="detail-item"><span class="detail-label">Date</span><span>${formatDate(t.date)}</span></div>
+            <div class="detail-item"><span class="detail-label">Pair</span><span style="color:${getPairColor(t.pair)};font-weight:700">${t.pair}</span></div>
+            <div class="detail-item"><span class="detail-label">Direction</span><span class="type-badge ${t.type.toLowerCase()}">${t.type}</span></div>
+            <div class="detail-item"><span class="detail-label">Strategy</span><span>${t.strategy || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">Entry</span><span class="mono-text">$${formatWithCommas(t.entryPrice)}</span></div>
+            <div class="detail-item"><span class="detail-label">Exit</span><span class="mono-text">${t.exitPrice ? '$' + formatWithCommas(t.exitPrice) : '—'}</span></div>
+            <div class="detail-item"><span class="detail-label">Quantity</span><span class="mono-text">${t.quantity}</span></div>
+            <div class="detail-item"><span class="detail-label">Stop Loss</span><span class="mono-text negative">${t.stopLoss ? '$' + formatWithCommas(t.stopLoss) : '—'}</span></div>
+            <div class="detail-item"><span class="detail-label">Take Profit</span><span class="mono-text positive">${t.takeProfit ? '$' + formatWithCommas(t.takeProfit) : '—'}</span></div>
+            <div class="detail-item"><span class="detail-label">P&L</span><span class="mono-text ${getValueClass(pnl)}" style="font-size:1.1rem;font-weight:700">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}</span></div>
+            <div class="detail-item"><span class="detail-label">P&L %</span><span class="mono-text ${getValueClass(t.pnlPercent)}">${formatPercent(t.pnlPercent)}</span></div>
+            ${t.notes ? `<div class="detail-notes"><span class="detail-label">Notes</span><p>${t.notes}</p></div>` : ''}
+        `;
+        
+        document.getElementById('viewDetailsModal').classList.add('active');
+    }
+    
+    closeViewDetailsModal() {
+        document.getElementById('viewDetailsModal').classList.remove('active');
+    }
+    
+    // ===== POSITIONS TAB =====
+    
+    renderPositionsTab() {
+        const container = document.getElementById('positionsContainer');
+        if (!container) return;
+        
+        const positions = this.data.positions || [];
+        
+        if (positions.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><p>No open positions</p></div>';
+            return;
+        }
+        
+        container.innerHTML = positions.map(p => {
+            const entry = parseFloat(p.entryPrice) || 0;
+            const current = parseFloat(p.currentPrice) || entry;
+            const qty = parseFloat(p.quantity) || 0;
+            const sl = parseFloat(p.stopLoss) || 0;
+            const tp = parseFloat(p.takeProfit) || 0;
+            
+            const upnl = p.type === 'LONG' ? (current - entry) * qty : (entry - current) * qty;
+            const upnlPct = entry > 0 ? (p.type === 'LONG' ? ((current - entry) / entry * 100) : ((entry - current) / entry * 100)) : 0;
+            
+            const range = tp - sl || 1;
+            const progress = Math.min(Math.max(((current - sl) / range) * 100, 0), 100);
+            
+            return `
+                <div class="position-card ${getValueClass(upnl)}">
+                    <div class="position-header">
+                        <div class="position-pair">
+                            <span style="color:${getPairColor(p.pair)};font-weight:800;font-size:1.1rem">${p.pair}</span>
+                            <span class="type-badge ${p.type.toLowerCase()}">${p.type}</span>
+                            <span class="strategy-tag">${p.strategy || ''}</span>
+                        </div>
+                        <div class="position-pnl">
+                            <div class="pnl-value ${getValueClass(upnl)}">${upnl >= 0 ? '+' : ''}${formatCurrency(upnl)}</div>
+                            <div class="pnl-percent ${getValueClass(upnlPct)}">${formatPercent(upnlPct)}</div>
+                        </div>
+                    </div>
+                    <div class="position-grid">
+                        <div class="pos-stat"><span class="pos-label">Entry</span><span class="pos-value mono-text">$${formatWithCommas(entry)}</span></div>
+                        <div class="pos-stat"><span class="pos-label">Current</span><span class="pos-value mono-text">$${formatWithCommas(current)}</span></div>
+                        <div class="pos-stat"><span class="pos-label">Stop Loss</span><span class="pos-value mono-text negative">$${formatWithCommas(sl)}</span></div>
+                        <div class="pos-stat"><span class="pos-label">Take Profit</span><span class="pos-value mono-text positive">$${formatWithCommas(tp)}</span></div>
+                    </div>
+                    <div class="position-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:${progress}%"></div>
+                            <div class="progress-marker" style="left:${progress}%"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span class="negative">SL: $${formatWithCommas(sl)}</span>
+                            <span class="positive">TP: $${formatWithCommas(tp)}</span>
+                        </div>
+                    </div>
+                    <div class="position-footer">
+                        <span class="pos-date">Opened ${formatDate(p.dateOpened)}</span>
+                        <div class="pos-actions">
+                            <button class="action-btn edit" onclick="app.editPosition(${p.rowIndex})">Edit</button>
+                            <button class="action-btn close-pos" onclick="app.closePositionPrompt(${p.rowIndex})">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // ===== POSITION MODAL =====
+    
+    openPositionModal(editData = null) {
+        const el = (id) => document.getElementById(id);
+        if (el('positionForm')) el('positionForm').reset();
+        if (el('positionRowIndex')) el('positionRowIndex').value = '';
+        
+        if (editData) {
+            if (el('positionModalTitle')) el('positionModalTitle').textContent = 'Edit Position';
+            if (el('positionRowIndex')) el('positionRowIndex').value = editData.rowIndex;
+            if (el('posDate')) el('posDate').value = formatDateForInput(editData.dateOpened);
+            if (el('posPair')) el('posPair').value = editData.pair;
+            if (el('posType')) el('posType').value = editData.type;
+            if (el('posStrategy')) el('posStrategy').value = editData.strategy || '';
+            if (el('posEntry')) el('posEntry').value = editData.entryPrice;
+            if (el('posCurrent')) el('posCurrent').value = editData.currentPrice || '';
+            if (el('posQty')) el('posQty').value = editData.quantity;
+            if (el('posSL')) el('posSL').value = editData.stopLoss || '';
+            if (el('posTP')) el('posTP').value = editData.takeProfit || '';
+            if (el('posNotes')) el('posNotes').value = editData.notes || '';
+        } else {
+            if (el('positionModalTitle')) el('positionModalTitle').textContent = 'New Position';
+            if (el('posDate')) el('posDate').value = getTodayStr();
+        }
+        
+        if (el('positionModal')) el('positionModal').classList.add('active');
+        setTimeout(() => this.setupAmountInputs(), 100);
+    }
+    
+    closePositionModal() {
+        document.getElementById('positionModal')?.classList.remove('active');
+    }
+    
+    async savePositionEntry() {
+        const el = (id) => document.getElementById(id);
+        const rowIndex = el('positionRowIndex')?.value;
+        const entryPrice = parseFormattedNumber(el('posEntry')?.value);
+        
+        if (!el('posPair')?.value || entryPrice <= 0) {
+            this.showToast('Fill required fields', 'warning'); return;
+        }
+        
+        const data = {
+            dateOpened: el('posDate')?.value || getTodayStr(),
+            pair: el('posPair')?.value,
+            type: el('posType')?.value || 'LONG',
+            strategy: el('posStrategy')?.value || '',
+            entryPrice,
+            currentPrice: parseFormattedNumber(el('posCurrent')?.value) || entryPrice,
+            quantity: parseFormattedNumber(el('posQty')?.value) || 1,
+            stopLoss: parseFormattedNumber(el('posSL')?.value) || '',
+            takeProfit: parseFormattedNumber(el('posTP')?.value) || '',
+            notes: el('posNotes')?.value || ''
+        };
+        
+        if (rowIndex) data.rowIndex = parseInt(rowIndex);
+        
+        try {
+            this.showToast('Saving...', 'info');
+            if (cryptoAPI.isConfigured()) {
+                if (rowIndex) await cryptoAPI.updatePosition(data);
+                else await cryptoAPI.addPosition(data);
+                this.closePositionModal();
+                await this.syncData();
+            } else {
+                if (rowIndex) {
+                    const idx = this.data.positions.findIndex(p => p.rowIndex == rowIndex);
+                    if (idx > -1) this.data.positions[idx] = { ...this.data.positions[idx], ...data };
+                } else {
+                    data.rowIndex = Date.now();
+                    this.data.positions.push(data);
+                }
+                this.closePositionModal();
+                this.renderTab('positions');
+            }
+            this.showToast('Position saved!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    editPosition(rowIndex) {
+        const item = this.data.positions.find(p => p.rowIndex === rowIndex);
+        if (item) this.openPositionModal(item);
+    }
+    
+    closePositionPrompt(rowIndex) {
+        const exitPrice = prompt('Enter exit price to close this position:');
+        if (!exitPrice) return;
+        const price = parseFloat(exitPrice);
+        if (isNaN(price) || price <= 0) { this.showToast('Invalid price', 'warning'); return; }
+        
+        const pos = this.data.positions.find(p => p.rowIndex === rowIndex);
+        if (!pos) return;
+        
+        // Create closed trade from position
+        const pnl = pos.type === 'LONG' ? (price - pos.entryPrice) * pos.quantity : (pos.entryPrice - price) * pos.quantity;
+        const pnlPct = pos.type === 'LONG' ? ((price - pos.entryPrice) / pos.entryPrice * 100) : ((pos.entryPrice - price) / pos.entryPrice * 100);
+        
+        const trade = {
+            rowIndex: Date.now(), date: getTodayStr(), pair: pos.pair, type: pos.type,
+            strategy: pos.strategy, entryPrice: pos.entryPrice, exitPrice: price,
+            quantity: pos.quantity, stopLoss: pos.stopLoss, takeProfit: pos.takeProfit,
+            pnl: pnl.toFixed(2), pnlPercent: pnlPct.toFixed(2), status: 'CLOSED',
+            notes: pos.notes + ' [Closed from position]'
+        };
+        
+        this.data.trades.push(trade);
+        this.data.positions = this.data.positions.filter(p => p.rowIndex !== rowIndex);
+        this.renderTab('positions');
+        this.showToast(`Position closed. P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`, pnl >= 0 ? 'success' : 'error');
+    }
+    
+    // ===== STRATEGIES TAB =====
+    
+    renderStrategiesTab() {
+        const container = document.getElementById('strategiesContainer');
+        if (!container) return;
+        
+        const strategies = this.data.strategies || [];
+        
+        if (strategies.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚡</div><p>No strategies yet</p></div>';
+            return;
+        }
+        
+        container.innerHTML = strategies.map(s => {
+            const wr = parseFloat(s.winRate) || 0;
+            const wrColor = wr >= 60 ? 'var(--green)' : wr >= 50 ? 'var(--gold)' : 'var(--red)';
+            const indicators = (s.indicators || '').split(',').map(i => i.trim()).filter(Boolean);
+            
+            return `
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <h3 class="strategy-name">${s.name}</h3>
+                        <span class="timeframe-badge">${s.timeframe || '-'}</span>
+                    </div>
+                    <p class="strategy-desc">${s.description || ''}</p>
+                    <div class="strategy-indicators">
+                        ${indicators.map(i => `<span class="indicator-tag">${i}</span>`).join('')}
+                    </div>
+                    <div class="strategy-stats">
+                        <div class="strategy-winrate">
+                            <div class="wr-bar"><div class="wr-fill" style="width:${wr}%;background:${wrColor}"></div></div>
+                            <span class="wr-text" style="color:${wrColor}">${wr}%</span>
+                        </div>
+                        <span class="strategy-trades">${s.totalTrades || 0} trades</span>
+                    </div>
+                    <div class="strategy-actions">
+                        <button class="action-btn edit" onclick="app.editStrategy(${s.rowIndex})">Edit</button>
+                        <button class="action-btn delete" onclick="app.deleteStrategy(${s.rowIndex})">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // ===== STRATEGY MODAL =====
+    
+    openStrategyModal(editData = null) {
+        const el = (id) => document.getElementById(id);
+        if (el('strategyForm')) el('strategyForm').reset();
+        if (el('strategyRowIndex')) el('strategyRowIndex').value = '';
+        
+        if (editData) {
+            if (el('strategyModalTitle')) el('strategyModalTitle').textContent = 'Edit Strategy';
+            if (el('strategyRowIndex')) el('strategyRowIndex').value = editData.rowIndex;
+            if (el('stratName')) el('stratName').value = editData.name || '';
+            if (el('stratDesc')) el('stratDesc').value = editData.description || '';
+            if (el('stratTimeframe')) el('stratTimeframe').value = editData.timeframe || '';
+            if (el('stratIndicators')) el('stratIndicators').value = editData.indicators || '';
+        } else {
+            if (el('strategyModalTitle')) el('strategyModalTitle').textContent = 'New Strategy';
+        }
+        
+        if (el('strategyModal')) el('strategyModal').classList.add('active');
+    }
+    
+    closeStrategyModal() {
+        document.getElementById('strategyModal')?.classList.remove('active');
+    }
+    
+    async saveStrategyEntry() {
+        const el = (id) => document.getElementById(id);
+        const name = el('stratName')?.value?.trim();
+        if (!name) { this.showToast('Enter strategy name', 'warning'); return; }
+        
+        const rowIndex = el('strategyRowIndex')?.value;
+        const data = {
+            name,
+            description: el('stratDesc')?.value || '',
+            timeframe: el('stratTimeframe')?.value || '',
+            indicators: el('stratIndicators')?.value || '',
+            winRate: 0, totalTrades: 0, createdDate: getTodayStr()
+        };
+        
+        if (rowIndex) data.rowIndex = parseInt(rowIndex);
+        
+        try {
+            if (cryptoAPI.isConfigured()) {
+                if (rowIndex) await cryptoAPI.updateStrategy(data);
+                else await cryptoAPI.addStrategy(data);
+                this.closeStrategyModal();
+                await this.syncData();
+            } else {
+                if (rowIndex) {
+                    const idx = this.data.strategies.findIndex(s => s.rowIndex == rowIndex);
+                    if (idx > -1) this.data.strategies[idx] = { ...this.data.strategies[idx], ...data };
+                } else {
+                    data.rowIndex = Date.now();
+                    this.data.strategies.push(data);
+                }
+                this.closeStrategyModal();
+                this.renderTab('strategies');
+            }
+            this.showToast('Strategy saved!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    editStrategy(rowIndex) {
+        const item = this.data.strategies.find(s => s.rowIndex === rowIndex);
+        if (item) this.openStrategyModal(item);
+    }
+    
+    async deleteStrategy(rowIndex) {
+        if (!confirm('Delete this strategy?')) return;
+        try {
+            if (cryptoAPI.isConfigured()) {
+                await cryptoAPI.deleteStrategy(rowIndex);
+                await this.syncData();
+            } else {
+                this.data.strategies = this.data.strategies.filter(s => s.rowIndex !== rowIndex);
+                this.renderTab('strategies');
+            }
+            this.showToast('Deleted!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    // ===== REMINDERS TAB =====
+    
+    renderRemindersTab() {
+        const container = document.getElementById('remindersContainer');
+        if (!container) return;
+        
+        const reminders = this.data.reminders || [];
+        const icons = { PRICE_ALERT: '📊', NEWS: '📰', EVENT: '📅', STRATEGY: '⚡', GENERAL: '💡' };
+        
+        const active = reminders.filter(r => r.status === 'ACTIVE');
+        const dismissed = reminders.filter(r => r.status !== 'ACTIVE');
+        
+        if (reminders.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔔</div><p>No reminders yet</p></div>';
+            return;
+        }
+        
+        let html = '';
+        
+        if (active.length > 0) {
+            html += '<h3 class="section-title">Active Reminders</h3>';
+            html += '<div class="reminders-grid">';
+            html += active.map(r => `
+                <div class="reminder-card-full active">
+                    <div class="reminder-top">
+                        <span class="reminder-type-icon">${icons[r.type] || '💡'}</span>
+                        <span class="reminder-type-badge">${(r.type || 'GENERAL').replace('_', ' ')}</span>
+                        <div class="reminder-status active"><span class="status-dot"></span> Active</div>
+                    </div>
+                    <p class="reminder-message">${r.message}</p>
+                    <div class="reminder-bottom">
+                        <span class="reminder-datetime">📅 ${formatDate(r.date)} ⏰ ${r.time || ''}</span>
+                        ${r.pair ? `<span class="reminder-pair" style="color:${getPairColor(r.pair)}">${r.pair}</span>` : ''}
+                    </div>
+                    <div class="reminder-actions">
+                        <button class="action-btn dismiss" onclick="app.dismissReminder(${r.rowIndex})">Dismiss</button>
+                        <button class="action-btn delete" onclick="app.deleteReminder(${r.rowIndex})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+            html += '</div>';
+        }
+        
+        if (dismissed.length > 0) {
+            html += '<h3 class="section-title" style="margin-top:24px;opacity:0.5">Dismissed</h3>';
+            html += '<div class="reminders-grid">';
+            html += dismissed.slice(0, 5).map(r => `
+                <div class="reminder-card-full dismissed">
+                    <div class="reminder-top">
+                        <span class="reminder-type-icon">${icons[r.type] || '💡'}</span>
+                        <span class="reminder-type-badge">${(r.type || 'GENERAL').replace('_', ' ')}</span>
+                    </div>
+                    <p class="reminder-message">${r.message}</p>
+                    <div class="reminder-bottom">
+                        <span class="reminder-datetime">${formatDate(r.date)}</span>
+                    </div>
+                </div>
+            `).join('');
+            html += '</div>';
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    // ===== REMINDER MODAL =====
+    
+    openReminderModal(editData = null) {
+        const el = (id) => document.getElementById(id);
+        if (el('reminderForm')) el('reminderForm').reset();
+        if (el('reminderRowIndex')) el('reminderRowIndex').value = '';
+        
+        if (editData) {
+            if (el('reminderModalTitle')) el('reminderModalTitle').textContent = 'Edit Reminder';
+            if (el('reminderRowIndex')) el('reminderRowIndex').value = editData.rowIndex;
+            if (el('remDate')) el('remDate').value = formatDateForInput(editData.date);
+            if (el('remTime')) el('remTime').value = editData.time || '';
+            if (el('remPair')) el('remPair').value = editData.pair || '';
+            if (el('remMessage')) el('remMessage').value = editData.message || '';
+            if (el('remType')) el('remType').value = editData.type || 'GENERAL';
+        } else {
+            if (el('reminderModalTitle')) el('reminderModalTitle').textContent = 'New Reminder';
+            if (el('remDate')) el('remDate').value = getTodayStr();
+        }
+        
+        if (el('reminderModal')) el('reminderModal').classList.add('active');
+    }
+    
+    closeReminderModal() {
+        document.getElementById('reminderModal')?.classList.remove('active');
+    }
+    
+    async saveReminderEntry() {
+        const el = (id) => document.getElementById(id);
+        const message = el('remMessage')?.value?.trim();
+        if (!message) { this.showToast('Enter a reminder message', 'warning'); return; }
+        
+        const rowIndex = el('reminderRowIndex')?.value;
+        const data = {
+            date: el('remDate')?.value || getTodayStr(),
+            time: el('remTime')?.value || '',
+            pair: el('remPair')?.value || '',
+            message,
+            type: el('remType')?.value || 'GENERAL',
+            status: 'ACTIVE'
+        };
+        
+        if (rowIndex) data.rowIndex = parseInt(rowIndex);
+        
+        try {
+            if (cryptoAPI.isConfigured()) {
+                if (rowIndex) await cryptoAPI.updateReminder(data);
+                else await cryptoAPI.addReminder(data);
+                this.closeReminderModal();
+                await this.syncData();
+            } else {
+                if (rowIndex) {
+                    const idx = this.data.reminders.findIndex(r => r.rowIndex == rowIndex);
+                    if (idx > -1) this.data.reminders[idx] = { ...this.data.reminders[idx], ...data };
+                } else {
+                    data.rowIndex = Date.now();
+                    this.data.reminders.push(data);
+                }
+                this.closeReminderModal();
+                this.renderTab('reminders');
+            }
+            this.showToast('Reminder saved!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    async dismissReminder(rowIndex) {
+        try {
+            if (cryptoAPI.isConfigured()) {
+                await cryptoAPI.dismissReminder(rowIndex);
+                await this.syncData();
+            } else {
+                const r = this.data.reminders.find(r => r.rowIndex === rowIndex);
+                if (r) r.status = 'DISMISSED';
+                this.renderTab('reminders');
+            }
+            this.showToast('Reminder dismissed', 'info');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    async deleteReminder(rowIndex) {
+        if (!confirm('Delete this reminder?')) return;
+        try {
+            if (cryptoAPI.isConfigured()) {
+                await cryptoAPI.deleteReminder(rowIndex);
+                await this.syncData();
+            } else {
+                this.data.reminders = this.data.reminders.filter(r => r.rowIndex !== rowIndex);
+                this.renderTab('reminders');
+            }
+            this.showToast('Deleted!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
+    }
+    
+    // ===== ANALYTICS TAB =====
+    
+    renderAnalyticsTab() {
+        const stats = this.getStats();
+        const trades = (this.data.trades || []).filter(t => t.status === 'CLOSED');
+        const el = (id) => document.getElementById(id);
+        
+        // Stats
+        if (el('aTotalTrades')) el('aTotalTrades').textContent = stats.totalTrades;
+        if (el('aWinRate')) { el('aWinRate').textContent = stats.winRate.toFixed(1) + '%'; el('aWinRate').className = `analytics-value ${stats.winRate >= 50 ? 'positive' : 'negative'}`; }
+        if (el('aProfitFactor')) { el('aProfitFactor').textContent = stats.profitFactor.toFixed(2); el('aProfitFactor').className = `analytics-value ${stats.profitFactor >= 1 ? 'positive' : 'negative'}`; }
+        if (el('aTotalPnL')) { el('aTotalPnL').textContent = formatCurrency(stats.totalPnL); el('aTotalPnL').className = `analytics-value ${getValueClass(stats.totalPnL)}`; }
+        if (el('aAvgWin')) el('aAvgWin').textContent = formatCurrency(stats.avgWin);
+        if (el('aAvgLoss')) el('aAvgLoss').textContent = formatCurrency(stats.avgLoss);
+        if (el('aBestTrade')) el('aBestTrade').textContent = formatCurrency(stats.bestTrade);
+        if (el('aWorstTrade')) el('aWorstTrade').textContent = formatCurrency(stats.worstTrade);
+        
+        // Win/Loss bar
+        const winBar = document.getElementById('winLossBar');
+        if (winBar && stats.totalTrades > 0) {
+            const winPct = (stats.wins / stats.totalTrades * 100);
+            winBar.innerHTML = `
+                <div class="wl-bar">
+                    <div class="wl-win" style="width:${winPct}%">${stats.wins}W</div>
+                    <div class="wl-loss" style="width:${100 - winPct}%">${stats.losses}L</div>
+                </div>
+            `;
+        }
+        
+        // Pair breakdown
+        const pairContainer = document.getElementById('pairBreakdown');
+        if (pairContainer && trades.length > 0) {
+            const pairStats = {};
+            trades.forEach(t => {
+                if (!pairStats[t.pair]) pairStats[t.pair] = { pnl: 0, count: 0, wins: 0 };
+                pairStats[t.pair].pnl += parseFloat(t.pnl) || 0;
+                pairStats[t.pair].count++;
+                if ((parseFloat(t.pnl) || 0) > 0) pairStats[t.pair].wins++;
+            });
+            
+            pairContainer.innerHTML = Object.entries(pairStats).sort((a, b) => b[1].pnl - a[1].pnl).map(([pair, data]) => `
+                <div class="pair-stat-row">
+                    <span class="pair-name" style="color:${getPairColor(pair)}">${pair}</span>
+                    <span class="pair-trades">${data.count} trades (${(data.wins / data.count * 100).toFixed(0)}% WR)</span>
+                    <span class="pair-pnl ${getValueClass(data.pnl)}">${data.pnl >= 0 ? '+' : ''}${formatCurrency(data.pnl)}</span>
+                </div>
+            `).join('');
+        }
+        
+        // Strategy breakdown
+        const stratContainer = document.getElementById('strategyBreakdown');
+        if (stratContainer && trades.length > 0) {
+            const stratStats = {};
+            trades.forEach(t => {
+                const key = t.strategy || 'Unknown';
+                if (!stratStats[key]) stratStats[key] = { pnl: 0, count: 0, wins: 0 };
+                stratStats[key].pnl += parseFloat(t.pnl) || 0;
+                stratStats[key].count++;
+                if ((parseFloat(t.pnl) || 0) > 0) stratStats[key].wins++;
+            });
+            
+            stratContainer.innerHTML = Object.entries(stratStats).sort((a, b) => b[1].pnl - a[1].pnl).map(([strat, data]) => `
+                <div class="pair-stat-row">
+                    <span class="pair-name">${strat}</span>
+                    <span class="pair-trades">${data.count} trades (${(data.wins / data.count * 100).toFixed(0)}% WR)</span>
+                    <span class="pair-pnl ${getValueClass(data.pnl)}">${data.pnl >= 0 ? '+' : ''}${formatCurrency(data.pnl)}</span>
+                </div>
+            `).join('');
+        }
+        
+        // PnL chart
+        this.renderPnLChart();
+    }
+    
+    renderPnLChart() {
+        const ctx = document.getElementById('pnlChart');
+        if (!ctx) return;
+        
+        if (this.pnlChart) this.pnlChart.destroy();
+        
+        const trades = (this.data.trades || []).filter(t => t.status === 'CLOSED').sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        let cumPnL = 0;
+        const data = trades.map(t => {
+            cumPnL += parseFloat(t.pnl) || 0;
+            return { date: formatDate(t.date), pnl: cumPnL };
+        });
+        
+        this.pnlChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [{
+                    label: 'Cumulative P&L',
+                    data: data.map(d => d.pnl),
+                    borderColor: '#4facfe',
+                    backgroundColor: 'rgba(79, 172, 254, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointBackgroundColor: data.map(d => d.pnl >= 0 ? '#00ff88' : '#ff4757')
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#606070', maxRotation: 45 } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#606070', callback: v => '$' + v } }
+                }
+            }
+        });
+    }
+    
+    // ===== SETTINGS =====
+    
+    openSettings() {
+        const settings = getSettings();
+        document.getElementById('webAppUrl').value = settings.webAppUrl || '';
+        document.getElementById('autoSync').checked = settings.autoSync !== false;
+        document.getElementById('startingBalance').value = settings.startingBalance || 1000;
+        document.getElementById('settingsOverlay').classList.add('active');
+    }
+    
+    closeSettings() {
+        document.getElementById('settingsOverlay').classList.remove('active');
+    }
+    
+    async handleTestConnection() {
+        const url = document.getElementById('webAppUrl').value;
+        if (!url) { this.showToast('Enter URL', 'warning'); return; }
+        
+        saveSettings({ ...getSettings(), webAppUrl: url });
+        cryptoAPI.updateSettings();
+        
+        this.showToast('Testing...', 'info');
+        const result = await cryptoAPI.testConnection();
+        this.showToast(result.success ? '✅ Connected!' : '❌ ' + result.message, result.success ? 'success' : 'error');
+    }
+    
+    handleSaveSettings() {
+        const settings = {
+            webAppUrl: document.getElementById('webAppUrl').value,
+            autoSync: document.getElementById('autoSync').checked,
+            startingBalance: parseFloat(document.getElementById('startingBalance').value) || 1000
+        };
+        
+        saveSettings(settings);
+        cryptoAPI.updateSettings();
+        this.setupAutoSync();
+        this.closeSettings();
+        this.showToast('Settings saved!', 'success');
+        
+        if (settings.webAppUrl) this.syncData();
+    }
+    
+    hardRefresh() {
+        this.showToast('Refreshing...', 'info');
+        if ('caches' in window) caches.keys().then(names => names.forEach(n => caches.delete(n)));
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.CACHE);
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.LAST_SYNC);
+        setTimeout(() => window.location.reload(true), 500);
+    }
+    
+    // ===== TOAST =====
+    
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+        
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new CryptoTraderApp();
+});
