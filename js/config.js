@@ -40,7 +40,9 @@ const CONFIG = {
 const DEFAULT_SETTINGS = {
     webAppUrl: '',
     autoSync: true,
-    startingBalance: 1000
+    wallpaper: '',
+    customIcon: '',
+    transactions: []
 };
 
 // ===== HELPER FUNCTIONS =====
