@@ -225,7 +225,7 @@
                 <h3 class="modal-title" id="tradeModalTitle">Log New Trade</h3>
                 <button class="modal-close" onclick="app.closeTradeModal()">✕</button>
             </div>
-            <div class="modal-body" id="tradeForm">
+            <div class="modal-body"><form id="tradeForm" onsubmit="return false;">
                 <input type="hidden" id="tradeRowIndex">
                 <div class="form-row">
                     <div class="form-group"><label>Date *</label><input type="text" id="tradeDate" class="form-input"></div>
@@ -257,7 +257,7 @@
                     <div class="form-group"><label>Take Profit</label><input type="text" id="tradeTP" class="form-input amount-input" placeholder="0.00"></div>
                 </div>
                 <div class="form-group"><label>Notes / Trade Rationale</label><textarea id="tradeNotes" class="form-input" rows="3" placeholder="Why did you enter this trade?"></textarea></div>
-            </div>
+            </form></div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="app.closeTradeModal()">Cancel</button>
                 <button class="btn-primary" onclick="app.saveTradeEntry()">Save Trade</button>
@@ -272,7 +272,7 @@
                 <h3 class="modal-title" id="positionModalTitle">New Position</h3>
                 <button class="modal-close" onclick="app.closePositionModal()">✕</button>
             </div>
-            <div class="modal-body" id="positionForm">
+            <div class="modal-body"><form id="positionForm" onsubmit="return false;">
                 <input type="hidden" id="positionRowIndex">
                 <div class="form-row">
                     <div class="form-group"><label>Date Opened</label><input type="date" id="posDate" class="form-input"></div>
@@ -302,7 +302,7 @@
                     <div class="form-group"><label>Take Profit</label><input type="text" id="posTP" class="form-input amount-input" placeholder="0.00"></div>
                 </div>
                 <div class="form-group"><label>Notes</label><textarea id="posNotes" class="form-input" rows="2" placeholder="Position notes..."></textarea></div>
-            </div>
+            </form></div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="app.closePositionModal()">Cancel</button>
                 <button class="btn-primary" onclick="app.savePositionEntry()">Save Position</button>
@@ -317,7 +317,7 @@
                 <h3 class="modal-title" id="strategyModalTitle">New Strategy</h3>
                 <button class="modal-close" onclick="app.closeStrategyModal()">✕</button>
             </div>
-            <div class="modal-body" id="strategyForm">
+            <div class="modal-body"><form id="strategyForm" onsubmit="return false;">
                 <input type="hidden" id="strategyRowIndex">
                 <div class="form-group"><label>Strategy Name *</label><input type="text" id="stratName" class="form-input" placeholder="e.g., Breakout Trading"></div>
                 <div class="form-group"><label>Description</label><textarea id="stratDesc" class="form-input" rows="3" placeholder="Describe your strategy rules..."></textarea></div>
@@ -333,7 +333,7 @@
                     </div>
                     <div class="form-group"><label>Indicators</label><input type="text" id="stratIndicators" class="form-input" placeholder="RSI, MACD, Volume..."></div>
                 </div>
-            </div>
+            </form></div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="app.closeStrategyModal()">Cancel</button>
                 <button class="btn-primary" onclick="app.saveStrategyEntry()">Save Strategy</button>
@@ -348,7 +348,7 @@
                 <h3 class="modal-title" id="reminderModalTitle">New Reminder</h3>
                 <button class="modal-close" onclick="app.closeReminderModal()">✕</button>
             </div>
-            <div class="modal-body" id="reminderForm">
+            <div class="modal-body"><form id="reminderForm" onsubmit="return false;">
                 <input type="hidden" id="reminderRowIndex">
                 <div class="form-row">
                     <div class="form-group"><label>Date</label><input type="date" id="remDate" class="form-input"></div>
@@ -365,7 +365,7 @@
                     </div>
                 </div>
                 <div class="form-group"><label>Message *</label><textarea id="remMessage" class="form-input" rows="3" placeholder="What do you want to be reminded about?"></textarea></div>
-            </div>
+            </form></div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="app.closeReminderModal()">Cancel</button>
                 <button class="btn-primary blue" onclick="app.saveReminderEntry()">Set Reminder</button>
