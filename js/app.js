@@ -65,7 +65,6 @@ class CryptoTraderApp {
         document.getElementById('hardRefreshBtn')?.addEventListener('click', () => this.hardRefresh());
         
         // Add buttons
-        document.getElementById('addTradeBtn')?.addEventListener('click', () => this.openTradeModal());
         document.getElementById('addPositionBtn')?.addEventListener('click', () => this.openPositionModal());
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
         document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
@@ -788,31 +787,64 @@ class CryptoTraderApp {
         if (item) this.openPositionModal(item);
     }
     
-    closePositionPrompt(rowIndex) {
-        const exitPrice = prompt('Enter exit price to close this position:');
+    async closePositionPrompt(rowIndex) {
+        const pos = this.data.positions.find(p => p.rowIndex === rowIndex);
+        if (!pos) { this.showToast('Position not found', 'error'); return; }
+        
+        const exitPrice = prompt(`Close ${pos.pair} ${pos.type} position\nEntry: $${formatWithCommas(pos.entryPrice)}\n\nEnter exit price:`);
         if (!exitPrice) return;
-        const price = parseFloat(exitPrice);
+        const price = parseFloat(exitPrice.replace(/,/g, ''));
         if (isNaN(price) || price <= 0) { this.showToast('Invalid price', 'warning'); return; }
         
-        const pos = this.data.positions.find(p => p.rowIndex === rowIndex);
-        if (!pos) return;
+        // Calculate P&L
+        const entry = parseFloat(pos.entryPrice) || 0;
+        const qty = parseFloat(pos.quantity) || 1;
+        const pnl = pos.type === 'LONG' ? (price - entry) * qty : (entry - price) * qty;
+        const pnlPct = entry > 0 ? (pos.type === 'LONG' ? ((price - entry) / entry * 100) : ((entry - price) / entry * 100)) : 0;
         
-        // Create closed trade from position
-        const pnl = pos.type === 'LONG' ? (price - pos.entryPrice) * pos.quantity : (pos.entryPrice - price) * pos.quantity;
-        const pnlPct = pos.type === 'LONG' ? ((price - pos.entryPrice) / pos.entryPrice * 100) : ((pos.entryPrice - price) / pos.entryPrice * 100);
-        
+        // Build trade entry from position
         const trade = {
-            rowIndex: Date.now(), date: getTodayStr(), pair: pos.pair, type: pos.type,
-            strategy: pos.strategy, entryPrice: pos.entryPrice, exitPrice: price,
-            quantity: pos.quantity, stopLoss: pos.stopLoss, takeProfit: pos.takeProfit,
-            pnl: pnl.toFixed(2), pnlPercent: pnlPct.toFixed(2), status: 'CLOSED',
-            notes: pos.notes + ' [Closed from position]'
+            date: getTodayStr(),
+            pair: pos.pair,
+            type: pos.type,
+            strategy: pos.strategy || '',
+            entryPrice: entry,
+            exitPrice: price,
+            quantity: qty,
+            stopLoss: pos.stopLoss || '',
+            takeProfit: pos.takeProfit || '',
+            pnl: pnl.toFixed(2),
+            pnlPercent: pnlPct.toFixed(2),
+            status: 'CLOSED',
+            notes: (pos.notes || '') + (pos.notes ? ' | ' : '') + 'Closed from open position'
         };
         
-        this.data.trades.push(trade);
-        this.data.positions = this.data.positions.filter(p => p.rowIndex !== rowIndex);
-        this.renderTab('positions');
-        this.showToast(`Position closed. P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`, pnl >= 0 ? 'success' : 'error');
+        if (!confirm(`Close this position?\n\n${pos.pair} ${pos.type}\nEntry: $${formatWithCommas(entry)}\nExit: $${formatWithCommas(price)}\nP&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)\n\nThis will move it to the Trade Journal.`)) return;
+        
+        try {
+            this.showToast('Closing position...', 'info');
+            
+            if (cryptoAPI.isConfigured()) {
+                // API mode: call closePosition which handles both sides on the backend
+                await cryptoAPI.closePosition({ rowIndex, exitPrice: price });
+                await this.syncData();
+            } else {
+                // Demo mode: add trade + remove position locally
+                trade.rowIndex = Date.now();
+                this.data.trades.push(trade);
+                this.data.positions = this.data.positions.filter(p => p.rowIndex !== rowIndex);
+                
+                // Re-render whichever tab is active
+                const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'positions';
+                this.renderTab(activeTab);
+                this.renderDashboard();
+            }
+            
+            this.showToast(`Position closed! P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`, pnl >= 0 ? 'success' : 'error');
+        } catch (error) {
+            console.error('Close position error:', error);
+            this.showToast('Failed to close position: ' + error.message, 'error');
+        }
     }
     
     // ===== STRATEGIES TAB =====
