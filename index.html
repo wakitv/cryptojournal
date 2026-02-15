@@ -12,8 +12,10 @@
     <title>CryptoTrader Pro | Trading Journal v2</title>
     
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="assets/icon-192.png">
-    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,11 +27,10 @@
 </head>
 <body>
     <div id="app" class="app">
-        <!-- ===== HEADER ===== -->
         <header class="header">
             <div class="header-left">
                 <button class="menu-btn" id="menuBtn"><span></span><span></span><span></span></button>
-                <h1 class="logo">₿ CryptoTrader<span class="version">Pro</span></h1>
+                <h1 class="logo"><img src="assets/logo.png" alt="CryptoTrader" class="logo-icon"> CryptoTrader<span class="version">Pro</span></h1>
             </div>
             <div class="header-right">
                 <div class="sync-status" id="syncStatus">
@@ -42,24 +43,13 @@
             </div>
         </header>
 
-        <!-- ===== SIDEBAR ===== -->
         <nav class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="user-info">
-                    <div class="avatar">📈</div>
-                    <div class="user-details">
-                        <span class="user-name">Trader</span>
-                        <span class="user-role">Full Access</span>
-                    </div>
-                </div>
-            </div>
             <ul class="nav-menu">
                 <li class="nav-item active" data-tab="dashboard"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></li>
                 <li class="nav-item" data-tab="trades"><span class="nav-icon">📝</span><span class="nav-text">Trade Journal</span></li>
                 <li class="nav-item" data-tab="positions"><span class="nav-icon">◎</span><span class="nav-text">Open Positions</span></li>
                 <li class="nav-item" data-tab="strategies"><span class="nav-icon">⚡</span><span class="nav-text">Strategies</span></li>
                 <li class="nav-item" data-tab="reminders"><span class="nav-icon">🔔</span><span class="nav-text">Reminders</span></li>
-                <li class="nav-item" data-tab="analytics"><span class="nav-icon">📈</span><span class="nav-text">Analytics</span></li>
             </ul>
             <div class="sidebar-footer">
                 <button class="settings-btn" id="settingsBtn"><span class="nav-icon">⚙️</span><span class="nav-text">Settings</span></button>
@@ -68,29 +58,60 @@
 
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <!-- ===== MAIN CONTENT ===== -->
         <main class="main-content">
 
-            <!-- ==================== DASHBOARD ==================== -->
+            <!-- ==================== DASHBOARD + ANALYTICS ==================== -->
             <section class="tab-content active" id="tab-dashboard">
-                <div class="page-header">
-                    <h2 class="page-title">Dashboard</h2>
-                    <p class="page-subtitle">Trading performance overview</p>
+                <div class="dashboard-wallpaper" id="dashboardWallpaper">
+                    <div class="wallpaper-overlay"></div>
+                    <div class="wallpaper-content">
+                        <img src="assets/logo.png" alt="Logo" class="wallpaper-logo" id="wallpaperLogo">
+                        <h2 class="wallpaper-title">CryptoTrader Pro</h2>
+                        <p class="wallpaper-subtitle">Performance overview & analytics</p>
+                    </div>
                 </div>
 
-                <div class="stats-grid">
+                <div class="stats-grid six">
+                    <div class="stat-card gold"><div class="stat-icon">💵</div><div class="stat-info"><span class="stat-label">Balance</span><span class="stat-value" id="currentBalance">$0</span></div></div>
                     <div class="stat-card green"><div class="stat-icon">💰</div><div class="stat-info"><span class="stat-label">Total P&L</span><span class="stat-value" id="totalPnL">$0</span></div></div>
+                    <div class="stat-card cyan"><div class="stat-icon">📅</div><div class="stat-info"><span class="stat-label">Today's P&L</span><span class="stat-value" id="todayPnL">$0</span></div></div>
                     <div class="stat-card gold"><div class="stat-icon">🎯</div><div class="stat-info"><span class="stat-label">Win Rate</span><span class="stat-value" id="winRate">0%</span></div></div>
                     <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-info"><span class="stat-label">Total Trades</span><span class="stat-value" id="totalTrades">0</span></div></div>
                     <div class="stat-card purple"><div class="stat-icon">◎</div><div class="stat-info"><span class="stat-label">Open Positions</span><span class="stat-value" id="openPositions">0</span></div></div>
-                    <div class="stat-card cyan"><div class="stat-icon">⚖️</div><div class="stat-info"><span class="stat-label">Profit Factor</span><span class="stat-value" id="profitFactor">0</span></div></div>
-                    <div class="stat-card gold"><div class="stat-icon">💵</div><div class="stat-info"><span class="stat-label">Balance</span><span class="stat-value" id="currentBalance">$0</span></div></div>
                 </div>
 
-                <div class="chart-section">
+                <div class="analytics-grid">
+                    <div class="analytics-card"><span class="analytics-label">Profit Factor</span><span class="analytics-value" id="profitFactor">0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Avg Win</span><span class="analytics-value positive" id="aAvgWin">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Avg Loss</span><span class="analytics-value negative" id="aAvgLoss">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Best Trade</span><span class="analytics-value positive" id="aBestTrade">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Worst Trade</span><span class="analytics-value negative" id="aWorstTrade">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Unrealized P&L</span><span class="analytics-value" id="unrealizedPnL">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Win Streak</span><span class="analytics-value" id="winStreak">0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Loss Streak</span><span class="analytics-value" id="lossStreak">0</span></div>
+                </div>
+
+                <div id="winLossBar" class="wl-container"></div>
+
+                <div class="dashboard-grid">
                     <div class="chart-card">
                         <div class="chart-header"><h3>Portfolio Growth</h3></div>
                         <div class="chart-body"><canvas id="portfolioChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header"><h3>Cumulative P&L</h3></div>
+                        <div class="chart-body"><canvas id="pnlChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>P&L by Pair</h3></div>
+                        <div id="pairBreakdown" class="breakdown-list"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>P&L by Strategy</h3></div>
+                        <div id="strategyBreakdown" class="breakdown-list"></div>
                     </div>
                 </div>
 
@@ -111,7 +132,6 @@
                 <div class="page-header">
                     <h2 class="page-title">Trade Journal</h2>
                 </div>
-
                 <div class="filter-bar">
                     <div class="filter-group">
                         <input type="text" id="filterStartDate" class="filter-input" placeholder="Start">
@@ -127,19 +147,14 @@
                         <span>Total: <strong id="filterTotal">0</strong></span>
                     </div>
                 </div>
-
                 <div class="table-container">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th><th>Pair</th><th>Type</th><th>Strategy</th>
-                                <th>Entry</th><th>Exit</th><th>Qty</th>
-                                <th>P&L ($)</th><th>P&L (%)</th><th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tradesTableBody">
-                            <tr><td colspan="10" class="empty-cell">Loading...</td></tr>
-                        </tbody>
+                        <thead><tr>
+                            <th>Date</th><th>Pair</th><th>Type</th><th>Strategy</th>
+                            <th>Entry</th><th>Exit</th><th>Qty</th>
+                            <th>P&L ($)</th><th>P&L (%)</th><th>Actions</th>
+                        </tr></thead>
+                        <tbody id="tradesTableBody"><tr><td colspan="10" class="empty-cell">Loading...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -170,125 +185,57 @@
                 </div>
                 <div id="remindersContainer"></div>
             </section>
-
-            <!-- ==================== ANALYTICS ==================== -->
-            <section class="tab-content" id="tab-analytics">
-                <div class="page-header">
-                    <h2 class="page-title">Analytics</h2>
-                    <p class="page-subtitle">Detailed performance breakdown</p>
-                </div>
-
-                <div class="analytics-grid">
-                    <div class="analytics-card"><span class="analytics-label">Total Trades</span><span class="analytics-value" id="aTotalTrades">0</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Win Rate</span><span class="analytics-value" id="aWinRate">0%</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Profit Factor</span><span class="analytics-value" id="aProfitFactor">0</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Total P&L</span><span class="analytics-value" id="aTotalPnL">$0</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Avg Win</span><span class="analytics-value positive" id="aAvgWin">$0</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Avg Loss</span><span class="analytics-value negative" id="aAvgLoss">$0</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Best Trade</span><span class="analytics-value positive" id="aBestTrade">$0</span></div>
-                    <div class="analytics-card"><span class="analytics-label">Worst Trade</span><span class="analytics-value negative" id="aWorstTrade">$0</span></div>
-                </div>
-
-                <div id="winLossBar" class="wl-container"></div>
-
-                <div class="chart-card" style="margin-top:20px">
-                    <div class="chart-header"><h3>Cumulative P&L</h3></div>
-                    <div class="chart-body"><canvas id="pnlChart"></canvas></div>
-                </div>
-
-                <div class="dashboard-grid" style="margin-top:20px">
-                    <div class="card"><div class="card-header"><h3>P&L by Pair</h3></div><div id="pairBreakdown" class="breakdown-list"></div></div>
-                    <div class="card"><div class="card-header"><h3>P&L by Strategy</h3></div><div id="strategyBreakdown" class="breakdown-list"></div></div>
-                </div>
-            </section>
         </main>
 
-        <!-- ===== BOTTOM NAV (Mobile) ===== -->
         <nav class="bottom-nav">
             <button class="bottom-nav-item active" data-tab="dashboard"><span class="bnav-icon">📊</span><span class="bnav-text">Home</span></button>
             <button class="bottom-nav-item" data-tab="trades"><span class="bnav-icon">📝</span><span class="bnav-text">Trades</span></button>
             <button class="bottom-nav-item" data-tab="positions"><span class="bnav-icon">◎</span><span class="bnav-text">Positions</span></button>
+            <button class="bottom-nav-item" data-tab="strategies"><span class="bnav-icon">⚡</span><span class="bnav-text">Strategy</span></button>
             <button class="bottom-nav-item" data-tab="reminders"><span class="bnav-icon">🔔</span><span class="bnav-text">Alerts</span></button>
-            <button class="bottom-nav-item" data-tab="analytics"><span class="bnav-icon">📈</span><span class="bnav-text">Analytics</span></button>
         </nav>
     </div>
 
-    <!-- ===================================================================== -->
     <!-- MODALS -->
-    <!-- ===================================================================== -->
-
-    <!-- TRADE MODAL -->
     <div class="modal-overlay" id="tradeModal">
         <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="tradeModalTitle">Log New Trade</h3>
-                <button class="modal-close" onclick="app.closeTradeModal()">✕</button>
-            </div>
+            <div class="modal-header"><h3 class="modal-title" id="tradeModalTitle">Edit Trade</h3><button class="modal-close" onclick="app.closeTradeModal()">✕</button></div>
             <div class="modal-body"><form id="tradeForm" onsubmit="return false;">
                 <input type="hidden" id="tradeRowIndex">
                 <div class="form-row">
                     <div class="form-group"><label>Date *</label><input type="text" id="tradeDate" class="form-input"></div>
-                    <div class="form-group"><label>Pair *</label>
-                        <select id="tradePair" class="form-input">
-                            <option value="">Select pair</option>
-                            <option value="BTC/USDT">BTC/USDT</option><option value="ETH/USDT">ETH/USDT</option>
-                            <option value="SOL/USDT">SOL/USDT</option><option value="BNB/USDT">BNB/USDT</option>
-                            <option value="XRP/USDT">XRP/USDT</option><option value="DOGE/USDT">DOGE/USDT</option>
-                            <option value="ADA/USDT">ADA/USDT</option><option value="AVAX/USDT">AVAX/USDT</option>
-                            <option value="DOT/USDT">DOT/USDT</option><option value="LINK/USDT">LINK/USDT</option>
-                            <option value="ARB/USDT">ARB/USDT</option><option value="OP/USDT">OP/USDT</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label>Pair *</label><select id="tradePair" class="form-input"><option value="">Select pair</option><option value="BTC/USDT">BTC/USDT</option><option value="ETH/USDT">ETH/USDT</option><option value="SOL/USDT">SOL/USDT</option><option value="BNB/USDT">BNB/USDT</option><option value="XRP/USDT">XRP/USDT</option><option value="DOGE/USDT">DOGE/USDT</option><option value="ADA/USDT">ADA/USDT</option><option value="AVAX/USDT">AVAX/USDT</option><option value="DOT/USDT">DOT/USDT</option><option value="LINK/USDT">LINK/USDT</option><option value="ARB/USDT">ARB/USDT</option><option value="OP/USDT">OP/USDT</option></select></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Direction</label>
-                        <select id="tradeType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select>
-                    </div>
+                    <div class="form-group"><label>Direction</label><select id="tradeType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select></div>
                     <div class="form-group"><label>Strategy</label><input type="text" id="tradeStrategy" class="form-input" placeholder="e.g., Breakout"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Entry Price *</label><input type="text" id="tradeEntry" class="form-input amount-input" placeholder="0.00"></div>
-                    <div class="form-group"><label>Exit Price</label><input type="text" id="tradeExit" class="form-input amount-input" placeholder="Leave empty if open"></div>
+                    <div class="form-group"><label>Exit Price</label><input type="text" id="tradeExit" class="form-input amount-input" placeholder="0.00"></div>
                 </div>
                 <div class="form-row three">
                     <div class="form-group"><label>Quantity</label><input type="text" id="tradeQty" class="form-input amount-input" placeholder="1"></div>
                     <div class="form-group"><label>Stop Loss</label><input type="text" id="tradeSL" class="form-input amount-input" placeholder="0.00"></div>
                     <div class="form-group"><label>Take Profit</label><input type="text" id="tradeTP" class="form-input amount-input" placeholder="0.00"></div>
                 </div>
-                <div class="form-group"><label>Notes / Trade Rationale</label><textarea id="tradeNotes" class="form-input" rows="3" placeholder="Why did you enter this trade?"></textarea></div>
+                <div class="form-group"><label>Notes</label><textarea id="tradeNotes" class="form-input" rows="3" placeholder="Trade notes..."></textarea></div>
             </form></div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="app.closeTradeModal()">Cancel</button>
-                <button class="btn-primary" onclick="app.saveTradeEntry()">Save Trade</button>
-            </div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeTradeModal()">Cancel</button><button class="btn-primary" onclick="app.saveTradeEntry()">Save Trade</button></div>
         </div>
     </div>
 
-    <!-- POSITION MODAL -->
     <div class="modal-overlay" id="positionModal">
         <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="positionModalTitle">New Position</h3>
-                <button class="modal-close" onclick="app.closePositionModal()">✕</button>
-            </div>
+            <div class="modal-header"><h3 class="modal-title" id="positionModalTitle">New Position</h3><button class="modal-close" onclick="app.closePositionModal()">✕</button></div>
             <div class="modal-body"><form id="positionForm" onsubmit="return false;">
                 <input type="hidden" id="positionRowIndex">
                 <div class="form-row">
                     <div class="form-group"><label>Date Opened</label><input type="date" id="posDate" class="form-input"></div>
-                    <div class="form-group"><label>Pair *</label>
-                        <select id="posPair" class="form-input">
-                            <option value="">Select pair</option>
-                            <option value="BTC/USDT">BTC/USDT</option><option value="ETH/USDT">ETH/USDT</option>
-                            <option value="SOL/USDT">SOL/USDT</option><option value="BNB/USDT">BNB/USDT</option>
-                            <option value="XRP/USDT">XRP/USDT</option><option value="DOGE/USDT">DOGE/USDT</option>
-                            <option value="ADA/USDT">ADA/USDT</option><option value="AVAX/USDT">AVAX/USDT</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label>Pair *</label><select id="posPair" class="form-input"><option value="">Select pair</option><option value="BTC/USDT">BTC/USDT</option><option value="ETH/USDT">ETH/USDT</option><option value="SOL/USDT">SOL/USDT</option><option value="BNB/USDT">BNB/USDT</option><option value="XRP/USDT">XRP/USDT</option><option value="DOGE/USDT">DOGE/USDT</option><option value="ADA/USDT">ADA/USDT</option><option value="AVAX/USDT">AVAX/USDT</option></select></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Direction</label>
-                        <select id="posType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select>
-                    </div>
+                    <div class="form-group"><label>Direction</label><select id="posType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select></div>
                     <div class="form-group"><label>Strategy</label><input type="text" id="posStrategy" class="form-input" placeholder="e.g., Trend Following"></div>
                 </div>
                 <div class="form-row">
@@ -302,51 +249,29 @@
                 </div>
                 <div class="form-group"><label>Notes</label><textarea id="posNotes" class="form-input" rows="2" placeholder="Position notes..."></textarea></div>
             </form></div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="app.closePositionModal()">Cancel</button>
-                <button class="btn-primary" onclick="app.savePositionEntry()">Save Position</button>
-            </div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closePositionModal()">Cancel</button><button class="btn-primary" onclick="app.savePositionEntry()">Save Position</button></div>
         </div>
     </div>
 
-    <!-- STRATEGY MODAL -->
     <div class="modal-overlay" id="strategyModal">
         <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="strategyModalTitle">New Strategy</h3>
-                <button class="modal-close" onclick="app.closeStrategyModal()">✕</button>
-            </div>
+            <div class="modal-header"><h3 class="modal-title" id="strategyModalTitle">New Strategy</h3><button class="modal-close" onclick="app.closeStrategyModal()">✕</button></div>
             <div class="modal-body"><form id="strategyForm" onsubmit="return false;">
                 <input type="hidden" id="strategyRowIndex">
                 <div class="form-group"><label>Strategy Name *</label><input type="text" id="stratName" class="form-input" placeholder="e.g., Breakout Trading"></div>
                 <div class="form-group"><label>Description</label><textarea id="stratDesc" class="form-input" rows="3" placeholder="Describe your strategy rules..."></textarea></div>
                 <div class="form-row">
-                    <div class="form-group"><label>Timeframe</label>
-                        <select id="stratTimeframe" class="form-input">
-                            <option value="">Select</option>
-                            <option value="1M">1 Minute</option><option value="5M">5 Minutes</option>
-                            <option value="15M">15 Minutes</option><option value="30M">30 Minutes</option>
-                            <option value="1H">1 Hour</option><option value="4H">4 Hours</option>
-                            <option value="1D">Daily</option><option value="1W">Weekly</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label>Timeframe</label><select id="stratTimeframe" class="form-input"><option value="">Select</option><option value="1M">1 Minute</option><option value="5M">5 Minutes</option><option value="15M">15 Minutes</option><option value="30M">30 Minutes</option><option value="1H">1 Hour</option><option value="4H">4 Hours</option><option value="1D">Daily</option><option value="1W">Weekly</option></select></div>
                     <div class="form-group"><label>Indicators</label><input type="text" id="stratIndicators" class="form-input" placeholder="RSI, MACD, Volume..."></div>
                 </div>
             </form></div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="app.closeStrategyModal()">Cancel</button>
-                <button class="btn-primary" onclick="app.saveStrategyEntry()">Save Strategy</button>
-            </div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeStrategyModal()">Cancel</button><button class="btn-primary" onclick="app.saveStrategyEntry()">Save Strategy</button></div>
         </div>
     </div>
 
-    <!-- REMINDER MODAL -->
     <div class="modal-overlay" id="reminderModal">
         <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="reminderModalTitle">New Reminder</h3>
-                <button class="modal-close" onclick="app.closeReminderModal()">✕</button>
-            </div>
+            <div class="modal-header"><h3 class="modal-title" id="reminderModalTitle">New Reminder</h3><button class="modal-close" onclick="app.closeReminderModal()">✕</button></div>
             <div class="modal-body"><form id="reminderForm" onsubmit="return false;">
                 <input type="hidden" id="reminderRowIndex">
                 <div class="form-row">
@@ -355,81 +280,128 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Pair (optional)</label><input type="text" id="remPair" class="form-input" placeholder="BTC/USDT"></div>
-                    <div class="form-group"><label>Type</label>
-                        <select id="remType" class="form-input">
-                            <option value="GENERAL">General</option><option value="PRICE_ALERT">Price Alert</option>
-                            <option value="NEWS">News</option><option value="EVENT">Event</option>
-                            <option value="STRATEGY">Strategy</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label>Type</label><select id="remType" class="form-input"><option value="GENERAL">General</option><option value="PRICE_ALERT">Price Alert</option><option value="NEWS">News</option><option value="EVENT">Event</option><option value="STRATEGY">Strategy</option></select></div>
                 </div>
                 <div class="form-group"><label>Message *</label><textarea id="remMessage" class="form-input" rows="3" placeholder="What do you want to be reminded about?"></textarea></div>
             </form></div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="app.closeReminderModal()">Cancel</button>
-                <button class="btn-primary blue" onclick="app.saveReminderEntry()">Set Reminder</button>
-            </div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeReminderModal()">Cancel</button><button class="btn-primary blue" onclick="app.saveReminderEntry()">Set Reminder</button></div>
         </div>
     </div>
 
-    <!-- VIEW DETAILS MODAL -->
     <div class="modal-overlay" id="viewDetailsModal">
         <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Trade Details</h3>
-                <button class="modal-close" onclick="app.closeViewDetailsModal()">✕</button>
-            </div>
+            <div class="modal-header"><h3 class="modal-title">Trade Details</h3><button class="modal-close" onclick="app.closeViewDetailsModal()">✕</button></div>
+            <div class="modal-body"><div id="detailsList" class="details-list"></div></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeViewDetailsModal()">Close</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="closePositionModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title">Close Position</h3><button class="modal-close" onclick="app.cancelClosePosition()">✕</button></div>
             <div class="modal-body">
-                <div id="detailsList" class="details-list"></div>
+                <div id="closePosInfo" class="close-pos-info"></div>
+                <div class="form-group">
+                    <label>Exit Price *</label>
+                    <input type="text" id="closeExitPrice" class="form-input amount-input" placeholder="0.00">
+                </div>
+                <div id="closePosPreview" class="close-pos-preview"></div>
+                <div class="form-group">
+                    <label>📸 Trading Chart Screenshot *</label>
+                    <p class="field-hint">Required — upload a screenshot of your trading chart</p>
+                    <div class="screenshot-upload-area" id="screenshotArea">
+                        <input type="file" id="closeScreenshot" accept="image/*" capture="environment" style="display:none">
+                        <div class="screenshot-placeholder" id="screenshotPlaceholder" onclick="document.getElementById('closeScreenshot').click()">
+                            <span class="screenshot-icon">📷</span>
+                            <span class="screenshot-text">Tap to upload chart screenshot</span>
+                        </div>
+                        <div class="screenshot-preview-wrap" id="screenshotPreviewWrap" style="display:none">
+                            <img id="screenshotPreviewImg" class="screenshot-preview-img" alt="Screenshot">
+                            <button class="screenshot-remove" onclick="app.removeCloseScreenshot()">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes (optional)</label>
+                    <textarea id="closeNotes" class="form-input" rows="2" placeholder="Add closing notes..."></textarea>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" onclick="app.closeViewDetailsModal()">Close</button>
+                <button class="btn-secondary" onclick="app.cancelClosePosition()">Cancel</button>
+                <button class="btn-primary" id="confirmCloseBtn" onclick="app.confirmClosePosition()">Close Position</button>
             </div>
         </div>
     </div>
 
-    <!-- SETTINGS OVERLAY -->
     <div class="settings-overlay" id="settingsOverlay">
         <div class="settings-panel">
-            <div class="settings-header">
-                <h3>⚙️ Settings</h3>
-                <button class="modal-close" id="settingsClose">✕</button>
-            </div>
+            <div class="settings-header"><h3>⚙️ Settings</h3><button class="modal-close" id="settingsClose">✕</button></div>
             <div class="settings-body">
-                <div class="form-group">
-                    <label>Google Apps Script Web App URL</label>
-                    <input type="url" id="webAppUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
-                    <button class="btn-sm" id="testConnection" style="margin-top:8px">Test Connection</button>
+                <div class="settings-section">
+                    <h4 class="settings-section-title">💰 Deposit & Withdraw</h4>
+                    <div class="deposit-withdraw-row">
+                        <div class="dw-group">
+                            <label>Amount ($)</label>
+                            <input type="text" id="dwAmount" class="form-input amount-input" placeholder="0.00">
+                        </div>
+                        <div class="dw-group">
+                            <label>Notes</label>
+                            <input type="text" id="dwNotes" class="form-input" placeholder="Optional note...">
+                        </div>
+                    </div>
+                    <div class="dw-buttons">
+                        <button class="btn-primary green" id="depositBtn">⬇️ Deposit</button>
+                        <button class="btn-primary red" id="withdrawBtn">⬆️ Withdraw</button>
+                    </div>
+                    <div id="dwHistory" class="dw-history"></div>
                 </div>
-                <div class="form-group">
-                    <label>Starting Balance ($)</label>
-                    <input type="number" id="startingBalance" class="form-input" placeholder="1000">
+
+                <div class="settings-section">
+                    <h4 class="settings-section-title">🖼️ Dashboard Wallpaper</h4>
+                    <div class="wallpaper-preview" id="wallpaperPreview">
+                        <span class="wallpaper-placeholder">No wallpaper set</span>
+                    </div>
+                    <div class="upload-row">
+                        <label class="btn-sm upload-label" for="wallpaperUpload">📷 Choose Image</label>
+                        <input type="file" id="wallpaperUpload" accept="image/*" style="display:none">
+                        <button class="btn-sm secondary" id="removeWallpaper">Remove</button>
+                    </div>
                 </div>
-                <div class="form-group toggle-group">
-                    <label>Auto Sync</label>
-                    <input type="checkbox" id="autoSync" checked>
+
+                <div class="settings-section">
+                    <h4 class="settings-section-title">🎨 App Icon / Logo</h4>
+                    <div class="icon-preview-row">
+                        <img src="assets/logo.png" id="iconPreview" class="icon-preview" alt="Current Icon">
+                        <div class="icon-info">
+                            <p class="icon-desc">Used as header logo, dashboard banner, and PWA icon</p>
+                            <div class="upload-row">
+                                <label class="btn-sm upload-label" for="iconUpload">📷 Change Icon</label>
+                                <input type="file" id="iconUpload" accept="image/*" style="display:none">
+                                <button class="btn-sm secondary" id="resetIcon">Reset Default</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn-sm secondary" id="hardRefreshBtn" style="margin-top:12px">🔄 Hard Refresh (Clear Cache)</button>
+
+                <div class="settings-section">
+                    <h4 class="settings-section-title">🔗 API Connection</h4>
+                    <div class="form-group"><label>Google Apps Script Web App URL</label><input type="url" id="webAppUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec"><button class="btn-sm" id="testConnection" style="margin-top:8px">Test Connection</button></div>
+                    <div class="form-group toggle-group"><label>Auto Sync</label><input type="checkbox" id="autoSync" checked></div>
+                    <button class="btn-sm secondary" id="hardRefreshBtn" style="margin-top:12px">🔄 Hard Refresh (Clear Cache)</button>
+                </div>
             </div>
-            <div class="settings-footer">
-                <button class="btn-secondary" id="settingsCancel">Cancel</button>
-                <button class="btn-primary" id="settingsSave">Save Settings</button>
-            </div>
+            <div class="settings-footer"><button class="btn-secondary" id="settingsCancel">Cancel</button><button class="btn-primary" id="settingsSave">Save Settings</button></div>
         </div>
     </div>
 
-    <!-- TOAST -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
-
     <script>
-        // Register service worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered'));
         }
