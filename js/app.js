@@ -493,10 +493,17 @@ class CryptoTraderApp {
         if (el('tradeForm')) el('tradeForm').reset();
         if (el('tradeRowIndex')) el('tradeRowIndex').value = '';
         
+        // Init flatpickr first if needed
+        const dateInput = el('tradeDate');
+        if (dateInput && !dateInput._flatpickr) {
+            flatpickr(dateInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d, Y', theme: 'dark' });
+        }
+        
         if (editData) {
             if (el('tradeModalTitle')) el('tradeModalTitle').textContent = 'Edit Trade';
             if (el('tradeRowIndex')) el('tradeRowIndex').value = editData.rowIndex;
-            if (el('tradeDate')) el('tradeDate').value = formatDateForInput(editData.date);
+            if (dateInput?._flatpickr) dateInput._flatpickr.setDate(formatDateForInput(editData.date), true);
+            else if (dateInput) dateInput.value = formatDateForInput(editData.date);
             if (el('tradePair')) el('tradePair').value = editData.pair;
             if (el('tradeType')) el('tradeType').value = editData.type;
             if (el('tradeStrategy')) el('tradeStrategy').value = editData.strategy || '';
@@ -508,18 +515,12 @@ class CryptoTraderApp {
             if (el('tradeNotes')) el('tradeNotes').value = editData.notes || '';
         } else {
             if (el('tradeModalTitle')) el('tradeModalTitle').textContent = 'Log New Trade';
-            if (el('tradeDate')) el('tradeDate').value = getTodayStr();
+            if (dateInput?._flatpickr) dateInput._flatpickr.setDate(getTodayStr(), true);
+            else if (dateInput) dateInput.value = getTodayStr();
         }
         
         if (el('tradeModal')) el('tradeModal').classList.add('active');
-        
-        setTimeout(() => {
-            this.setupAmountInputs();
-            const dateInput = document.getElementById('tradeDate');
-            if (dateInput && !dateInput._flatpickr) {
-                flatpickr(dateInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d, Y', theme: 'dark' });
-            }
-        }, 100);
+        setTimeout(() => this.setupAmountInputs(), 100);
     }
     
     closeTradeModal() {
