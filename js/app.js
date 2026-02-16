@@ -77,6 +77,7 @@ class CryptoTraderApp {
         document.getElementById('removeWallpaper')?.addEventListener('click', () => this.handleRemoveWallpaper());
         document.getElementById('iconUpload')?.addEventListener('change', (e) => this.handleIconUpload(e));
         document.getElementById('resetIcon')?.addEventListener('click', () => this.handleResetIcon());
+        document.getElementById('addPairBtn')?.addEventListener('click', () => this.handleAddPair());
         
         // Deposit/Withdraw
         document.getElementById('depositBtn')?.addEventListener('click', () => this.handleDeposit());
@@ -708,10 +709,31 @@ class CryptoTraderApp {
     
     // ===== TRADE MODAL =====
     
+    // ===== PAIR HELPERS =====
+    
+    getAllPairs() {
+        const settings = getSettings();
+        const custom = settings.customPairs || [];
+        const all = [...CONFIG.PAIRS];
+        custom.forEach(p => { if (!all.includes(p)) all.push(p); });
+        return all.sort();
+    }
+    
+    populatePairDropdown(selectId, selectedValue) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const pairs = this.getAllPairs();
+        select.innerHTML = '<option value="">Select pair</option>' +
+            pairs.map(p => `<option value="${p}"${p === selectedValue ? ' selected' : ''}>${p}</option>`).join('');
+    }
+    
     openTradeModal(editData = null) {
         const el = (id) => document.getElementById(id);
         if (el('tradeForm')) el('tradeForm').reset();
         if (el('tradeRowIndex')) el('tradeRowIndex').value = '';
+        
+        // Populate pair dropdown
+        this.populatePairDropdown('tradePair', editData?.pair || '');
         
         const dateInput = el('tradeDate');
         if (dateInput && !dateInput._flatpickr) {
@@ -941,6 +963,9 @@ class CryptoTraderApp {
         if (el('positionForm')) el('positionForm').reset();
         if (el('positionRowIndex')) el('positionRowIndex').value = '';
         
+        // Populate pair dropdown
+        this.populatePairDropdown('posPair', editData?.pair || '');
+        
         // Populate strategy dropdown from saved strategies
         const stratSelect = el('posStrategy');
         if (stratSelect) {
@@ -1138,100 +1163,90 @@ class CryptoTraderApp {
         duration += `${diffMins}m`;
         duration = duration.trim() || '0m';
         
-        try {
-            this.showToast('Uploading screenshot...', 'info');
-            document.getElementById('confirmCloseBtn').disabled = true;
-            
-            // Convert screenshot to base64
-            let screenshotUrl = '';
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(this.closeScreenshotFile);
-            });
-            
-            const fullDataUrl = `data:${this.closeScreenshotFile.type};base64,${base64Data}`;
-            
-            if (cryptoAPI.isConfigured()) {
-                try {
-                    const uploadResult = await cryptoAPI.uploadScreenshot({
-                        base64Data: base64Data,
-                        mimeType: this.closeScreenshotFile.type,
-                        fileName: `${pos.pair.replace('/', '-')}_close_${getTodayStr()}_${Date.now()}.${this.closeScreenshotFile.name.split('.').pop()}`
-                    });
-                    screenshotUrl = uploadResult.downloadUrl || uploadResult.fileUrl || uploadResult.url || '';
-                } catch (uploadErr) {
-                    console.warn('Screenshot upload failed:', uploadErr);
-                    this.showToast('Screenshot upload failed, saving locally...', 'warning');
-                    screenshotUrl = fullDataUrl;
-                }
-            } else {
-                // Demo mode — store as data URL
-                screenshotUrl = fullDataUrl;
-            }
-            
-            this.showToast('Closing position...', 'info');
-            
-            const trade = {
-                date: getTodayStr(),
-                pair: pos.pair,
-                type: pos.type,
-                strategy: pos.strategy || '',
-                entryPrice: entry,
-                exitPrice: exitPrice,
-                quantity: qty,
-                stopLoss: pos.stopLoss || '',
-                takeProfit: pos.takeProfit || '',
-                pnl: pnl.toFixed(2),
-                pnlPercent: pnlPct.toFixed(2),
-                status: 'CLOSED',
-                notes: ((pos.notes || '') + (pos.notes ? ' | ' : '') + 'Closed from position' + (closeNotes ? ' | ' + closeNotes : '')).trim(),
-                screenshotUrl: screenshotUrl,
-                dateOpened: pos.dateOpened || '',
-                dateClosed: getTodayStr(),
-                duration: duration
-            };
-            
-            if (cryptoAPI.isConfigured()) {
-                await cryptoAPI.closePosition({ 
-                    rowIndex: pos.rowIndex, 
-                    exitPrice: exitPrice,
-                    screenshotUrl: screenshotUrl,
-                    duration: duration,
-                    dateOpened: pos.dateOpened || '',
-                    dateClosed: getTodayStr()
+        // Capture file reference before closing modal
+        const screenshotFile = this.closeScreenshotFile;
+        
+        // Close modal INSTANTLY
+        this.cancelClosePosition();
+        
+        // Update local data immediately (optimistic update)
+        const trade = {
+            date: getTodayStr(),
+            pair: pos.pair,
+            type: pos.type,
+            strategy: pos.strategy || '',
+            entryPrice: entry,
+            exitPrice: exitPrice,
+            quantity: qty,
+            stopLoss: pos.stopLoss || '',
+            takeProfit: pos.takeProfit || '',
+            pnl: pnl.toFixed(2),
+            pnlPercent: pnlPct.toFixed(2),
+            status: 'CLOSED',
+            notes: ((pos.notes || '') + (pos.notes ? ' | ' : '') + 'Closed from position' + (closeNotes ? ' | ' + closeNotes : '')).trim(),
+            screenshotUrl: '',
+            dateOpened: pos.dateOpened || '',
+            dateClosed: getTodayStr(),
+            duration: duration,
+            rowIndex: Date.now()
+        };
+        
+        // Optimistic: update local state + UI right away
+        this.data.trades.push(trade);
+        this.data.positions = this.data.positions.filter(p => p.rowIndex !== pos.rowIndex);
+        this.updatePortfolioBalance(pnl);
+        cacheManager.save(this.data);
+        this.renderDashboard();
+        const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'positions';
+        this.renderTab(activeTab);
+        
+        this.showToast(`Position closed! P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} | ${duration}`, pnl >= 0 ? 'success' : 'error');
+        
+        // Background: upload screenshot + sync to API
+        (async () => {
+            try {
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(screenshotFile);
                 });
-                await this.syncData();
-            } else {
-                trade.rowIndex = Date.now();
-                this.data.trades.push(trade);
-                this.data.positions = this.data.positions.filter(p => p.rowIndex !== pos.rowIndex);
-                // Save screenshot separately to avoid localStorage size limits
-                try {
-                    localStorage.setItem(`ctp_screenshot_${trade.rowIndex}`, screenshotUrl);
-                } catch (e) {
-                    console.warn('Screenshot local save failed (size limit):', e);
+                
+                const fullDataUrl = `data:${screenshotFile.type};base64,${base64Data}`;
+                let screenshotUrl = fullDataUrl;
+                
+                if (cryptoAPI.isConfigured()) {
+                    try {
+                        const uploadResult = await cryptoAPI.uploadScreenshot({
+                            base64Data: base64Data,
+                            mimeType: screenshotFile.type,
+                            fileName: `${pos.pair.replace('/', '-')}_close_${getTodayStr()}_${Date.now()}.${screenshotFile.name.split('.').pop()}`
+                        });
+                        screenshotUrl = uploadResult.downloadUrl || uploadResult.fileUrl || uploadResult.url || fullDataUrl;
+                    } catch (e) { console.warn('Screenshot upload failed:', e); }
+                    
+                    try {
+                        await cryptoAPI.closePosition({
+                            rowIndex: pos.rowIndex,
+                            exitPrice: exitPrice,
+                            screenshotUrl: screenshotUrl,
+                            duration: duration,
+                            dateOpened: pos.dateOpened || '',
+                            dateClosed: getTodayStr()
+                        });
+                        await this.syncData();
+                        this.showToast('Synced to spreadsheet!', 'success');
+                    } catch (e) { console.warn('API sync failed:', e); }
+                } else {
+                    // Demo: save screenshot locally
+                    trade.screenshotUrl = fullDataUrl;
+                    try { localStorage.setItem(`ctp_screenshot_${trade.rowIndex}`, fullDataUrl); } catch (e) {}
+                    cacheManager.save(this.data);
                 }
+            } catch (err) {
+                console.error('Background save error:', err);
             }
-            
-            this.updatePortfolioBalance(pnl);
-            
-            // Force save cache with updated trades
-            cacheManager.save(this.data);
-            
-            this.cancelClosePosition();
-            this.renderDashboard();
-            const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'positions';
-            this.renderTab(activeTab);
-            
-            this.showToast(`Position closed! P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} | Duration: ${duration}`, pnl >= 0 ? 'success' : 'error');
-        } catch (error) {
-            console.error('Close position error:', error);
-            this.showToast('Failed to close position: ' + error.message, 'error');
-        } finally {
-            document.getElementById('confirmCloseBtn').disabled = false;
-        }
+        })();
     }
     
     // ===== STRATEGIES TAB =====
@@ -1613,6 +1628,9 @@ class CryptoTraderApp {
         // Deposit/Withdraw history
         this.renderTransactionHistory();
         
+        // Custom pairs list
+        this.renderCustomPairs();
+        
         // Amount input
         setupCommaInput(document.getElementById('dwAmount'));
         
@@ -1744,6 +1762,63 @@ class CryptoTraderApp {
         document.getElementById('iconPreview').src = 'assets/logo.png';
         this.applyCustomizations();
         this.showToast('Icon reset to default', 'info');
+    }
+    
+    // ===== CUSTOM PAIRS =====
+    
+    handleAddPair() {
+        const input = document.getElementById('newPairInput');
+        if (!input) return;
+        let pair = input.value.trim().toUpperCase().replace(/\s+/g, '');
+        if (!pair) { this.showToast('Enter a pair name', 'warning'); return; }
+        
+        // Auto-add /USDT if no slash
+        if (!pair.includes('/')) pair += '/USDT';
+        
+        const allPairs = this.getAllPairs();
+        if (allPairs.includes(pair)) {
+            this.showToast(`${pair} already exists`, 'warning');
+            input.value = '';
+            return;
+        }
+        
+        const settings = getSettings();
+        if (!settings.customPairs) settings.customPairs = [];
+        settings.customPairs.push(pair);
+        saveSettings(settings);
+        
+        input.value = '';
+        this.renderCustomPairs();
+        this.showToast(`${pair} added!`, 'success');
+    }
+    
+    removeCustomPair(pair) {
+        const settings = getSettings();
+        if (!settings.customPairs) return;
+        settings.customPairs = settings.customPairs.filter(p => p !== pair);
+        saveSettings(settings);
+        this.renderCustomPairs();
+        this.showToast(`${pair} removed`, 'info');
+    }
+    
+    renderCustomPairs() {
+        const container = document.getElementById('customPairsList');
+        if (!container) return;
+        
+        const settings = getSettings();
+        const custom = settings.customPairs || [];
+        
+        // Show default pairs + custom
+        const defaults = CONFIG.PAIRS;
+        let html = '<div class="pairs-tag-list">';
+        defaults.forEach(p => {
+            html += `<span class="pair-tag default">${p}</span>`;
+        });
+        custom.forEach(p => {
+            html += `<span class="pair-tag custom">${p} <button class="pair-remove" onclick="app.removeCustomPair('${p}')">✕</button></span>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
     }
     
     // ===== APPLY CUSTOMIZATIONS =====
