@@ -26,11 +26,15 @@ class CryptoTraderApp {
         this.setupAmountInputs();
         this.closePositionData = null;
         this.closeScreenshotFile = null;
+        this.strategyRotatorIndex = 0;
+        this.strategyRotatorInterval = null;
         this.loadFromCache();
         await this.syncData();
         this.setupAutoSync();
         this.applyCustomizations();
         this.renderDashboard();
+        this.startStrategyRotator();
+        this.renderReminderTicker();
     }
     
     setupAmountInputs() {
@@ -414,6 +418,10 @@ class CryptoTraderApp {
         // Recent + Reminders
         this.renderRecentTrades();
         this.renderActiveReminders();
+        
+        // Refresh header ticker + sidebar rotator
+        this.renderReminderTicker();
+        this.renderStrategyRotator();
     }
     
     renderPortfolioChart() {
@@ -1454,6 +1462,75 @@ class CryptoTraderApp {
         } catch (error) { this.showToast(error.message, 'error'); }
     }
     
+    // ===== STRATEGY ROTATOR (Sidebar) =====
+    
+    startStrategyRotator() {
+        // Clear any existing interval
+        if (this.strategyRotatorInterval) clearInterval(this.strategyRotatorInterval);
+        
+        // Render first strategy immediately
+        this.renderStrategyRotator();
+        
+        // Rotate every 15 seconds
+        this.strategyRotatorInterval = setInterval(() => {
+            this.renderStrategyRotator();
+        }, 15000);
+    }
+    
+    renderStrategyRotator() {
+        const container = document.getElementById('rotatorContent');
+        if (!container) return;
+        
+        const strategies = this.data.strategies || [];
+        if (strategies.length === 0) {
+            container.innerHTML = '<span class="rotator-text">No strategies yet — add one!</span>';
+            return;
+        }
+        
+        // Cycle through strategies
+        this.strategyRotatorIndex = this.strategyRotatorIndex % strategies.length;
+        const strat = strategies[this.strategyRotatorIndex];
+        this.strategyRotatorIndex++;
+        
+        container.innerHTML = `
+            <span class="rotator-text" style="animation:rotatorFadeIn 0.5s ease">
+                <span class="rotator-name">⚡ ${strat.name || 'Unnamed Strategy'}</span>
+                ${strat.description ? `<span class="rotator-desc">${strat.description.length > 60 ? strat.description.substring(0, 60) + '...' : strat.description}</span>` : ''}
+                ${strat.timeframe ? `<span class="rotator-tf">🕐 ${strat.timeframe}</span>` : ''}
+                ${strat.indicators ? `<span class="rotator-tf">📈 ${strat.indicators}</span>` : ''}
+            </span>
+        `;
+    }
+    
+    // ===== REMINDER TICKER (Header) =====
+    
+    renderReminderTicker() {
+        const track = document.getElementById('tickerTrack');
+        if (!track) return;
+        
+        const reminders = (this.data.reminders || []).filter(r => r.status === 'ACTIVE');
+        
+        if (reminders.length === 0) {
+            track.innerHTML = '<span class="ticker-item">🔔 No active reminders — Stay sharp, trader!</span>';
+            return;
+        }
+        
+        // Build ticker items — duplicate for seamless loop
+        const items = reminders.map(r => {
+            const typeIcon = { PRICE_ALERT: '💹', NEWS: '📰', EVENT: '📅', STRATEGY: '⚡', GENERAL: '🔔' }[r.type] || '🔔';
+            const pairTag = r.pair ? `<span class="ticker-pair">${r.pair}</span>` : '';
+            return `<span class="ticker-item">${typeIcon} <span class="ticker-type">${r.type || 'REMINDER'}</span> ${pairTag} ${r.message || ''}</span>`;
+        }).join('');
+        
+        // Duplicate for infinite scroll effect
+        track.innerHTML = items + items;
+        
+        // Adjust animation speed based on content length (slower = more readable)
+        const charCount = reminders.reduce((s, r) => s + (r.message || '').length, 0);
+        const duration = Math.max(30, Math.min(120, charCount * 0.5));
+        track.style.animationDuration = duration + 's';
+    }
+    
     // ===== SETTINGS =====
     
     openSettings() {
@@ -1521,7 +1598,7 @@ class CryptoTraderApp {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
             const dataUrl = ev.target.result;
             const settings = getSettings();
             settings.wallpaper = dataUrl;
@@ -1535,6 +1612,21 @@ class CryptoTraderApp {
             // Apply immediately
             this.applyCustomizations();
             this.showToast('Wallpaper updated!', 'success');
+            
+            // Upload to Google Drive
+            if (cryptoAPI.isConfigured()) {
+                try {
+                    const base64 = dataUrl.split(',')[1];
+                    await cryptoAPI.uploadScreenshot({
+                        base64Data: base64,
+                        mimeType: file.type,
+                        fileName: `wallpaper_${Date.now()}.${file.name.split('.').pop()}`
+                    });
+                    this.showToast('Wallpaper saved to Drive!', 'success');
+                } catch (err) {
+                    console.warn('Wallpaper Drive upload failed:', err);
+                }
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -1558,7 +1650,7 @@ class CryptoTraderApp {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
             const dataUrl = ev.target.result;
             const settings = getSettings();
             settings.customIcon = dataUrl;
@@ -1567,6 +1659,21 @@ class CryptoTraderApp {
             document.getElementById('iconPreview').src = dataUrl;
             this.applyCustomizations();
             this.showToast('Icon updated!', 'success');
+            
+            // Upload to Google Drive
+            if (cryptoAPI.isConfigured()) {
+                try {
+                    const base64 = dataUrl.split(',')[1];
+                    await cryptoAPI.uploadScreenshot({
+                        base64Data: base64,
+                        mimeType: file.type,
+                        fileName: `app_icon_${Date.now()}.${file.name.split('.').pop()}`
+                    });
+                    this.showToast('Icon saved to Drive!', 'success');
+                } catch (err) {
+                    console.warn('Icon Drive upload failed:', err);
+                }
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -1596,18 +1703,10 @@ class CryptoTraderApp {
             }
         }
         
-        // Icon — header logo, sidebar avatar, wallpaper logo
+        // Icon — header logo only (browser favicon stays permanent from assets)
         const iconSrc = settings.customIcon || 'assets/logo.png';
         const headerLogo = document.querySelector('.logo-icon');
         if (headerLogo) headerLogo.src = iconSrc;
-        const wallpaperLogo = document.getElementById('wallpaperLogo');
-        if (wallpaperLogo) wallpaperLogo.src = iconSrc;
-        
-        // Dynamic favicon
-        const faviconLink = document.querySelector('link[rel="icon"][type="image/x-icon"]') || document.querySelector('link[rel="icon"]');
-        if (faviconLink && settings.customIcon) {
-            faviconLink.href = settings.customIcon;
-        }
     }
     
     // ===== DEPOSIT / WITHDRAW =====
