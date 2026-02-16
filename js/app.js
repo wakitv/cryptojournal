@@ -640,6 +640,7 @@ class CryptoTraderApp {
         tbody.innerHTML = sorted.map(t => {
             const pnl = parseFloat(t.pnl) || 0;
             const pnlPct = parseFloat(t.pnlPercent) || 0;
+            const hasScreenshot = !!(t.screenshotUrl || localStorage.getItem(`ctp_screenshot_${t.rowIndex}`));
             return `
                 <tr>
                     <td class="mono-text">${formatDate(t.date)}</td>
@@ -648,9 +649,9 @@ class CryptoTraderApp {
                     <td class="mono-text">${t.strategy || '-'}</td>
                     <td class="mono-text">${formatWithCommas(t.entryPrice)}</td>
                     <td class="mono-text">${t.exitPrice ? formatWithCommas(t.exitPrice) : '—'}</td>
-                    <td class="mono-text">${t.quantity}</td>
                     <td class="mono-text ${getValueClass(pnl)}">${pnl >= 0 ? '+' : ''}$${formatNumber(Math.abs(pnl))}</td>
-                    <td class="mono-text ${getValueClass(pnlPct)}">${formatPercent(pnlPct)}</td>
+                    <td class="mono-text">${t.duration || '-'}</td>
+                    <td class="mono-text">${hasScreenshot ? '<span class="screenshot-badge" title="Has chart screenshot">📸</span>' : ''}</td>
                     <td class="actions-cell">
                         <button class="action-btn view" onclick="app.viewTradeDetails(${t.rowIndex})">👁</button>
                         <button class="action-btn edit" onclick="app.editTrade(${t.rowIndex})">✎</button>
@@ -830,9 +831,13 @@ class CryptoTraderApp {
         if (!t) return;
         
         const pnl = parseFloat(t.pnl) || 0;
+        const screenshotSrc = t.screenshotUrl || localStorage.getItem(`ctp_screenshot_${t.rowIndex}`) || '';
+        
         const container = document.getElementById('detailsList');
         container.innerHTML = `
-            <div class="detail-item"><span class="detail-label">Date</span><span>${formatDate(t.date)}</span></div>
+            <div class="detail-item"><span class="detail-label">Date Closed</span><span>${formatDate(t.date)}</span></div>
+            ${t.dateOpened ? `<div class="detail-item"><span class="detail-label">Date Opened</span><span>${formatDate(t.dateOpened)}</span></div>` : ''}
+            ${t.duration ? `<div class="detail-item"><span class="detail-label">Duration</span><span class="mono-text" style="color:var(--cyan)">⏱ ${t.duration}</span></div>` : ''}
             <div class="detail-item"><span class="detail-label">Pair</span><span style="color:${getPairColor(t.pair)};font-weight:700">${t.pair}</span></div>
             <div class="detail-item"><span class="detail-label">Direction</span><span class="type-badge ${t.type.toLowerCase()}">${t.type}</span></div>
             <div class="detail-item"><span class="detail-label">Strategy</span><span>${t.strategy || '-'}</span></div>
@@ -844,6 +849,15 @@ class CryptoTraderApp {
             <div class="detail-item"><span class="detail-label">P&L</span><span class="mono-text ${getValueClass(pnl)}" style="font-size:1.1rem;font-weight:700">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}</span></div>
             <div class="detail-item"><span class="detail-label">P&L %</span><span class="mono-text ${getValueClass(t.pnlPercent)}">${formatPercent(t.pnlPercent)}</span></div>
             ${t.notes ? `<div class="detail-notes"><span class="detail-label">Notes</span><p>${t.notes}</p></div>` : ''}
+            ${screenshotSrc ? `
+                <div class="detail-screenshot">
+                    <span class="detail-label">📸 Trading Chart</span>
+                    <div class="detail-screenshot-wrap">
+                        <img src="${screenshotSrc}" alt="Trading Chart" class="detail-screenshot-img" onclick="window.open(this.src, '_blank')">
+                        <p class="screenshot-hint">Tap image to view full size</p>
+                    </div>
+                </div>
+            ` : ''}
         `;
         
         document.getElementById('viewDetailsModal').classList.add('active');
@@ -926,6 +940,14 @@ class CryptoTraderApp {
         const el = (id) => document.getElementById(id);
         if (el('positionForm')) el('positionForm').reset();
         if (el('positionRowIndex')) el('positionRowIndex').value = '';
+        
+        // Populate strategy dropdown from saved strategies
+        const stratSelect = el('posStrategy');
+        if (stratSelect) {
+            const strategies = this.data.strategies || [];
+            stratSelect.innerHTML = '<option value="">Select strategy</option>' +
+                strategies.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+        }
         
         if (editData) {
             if (el('positionModalTitle')) el('positionModalTitle').textContent = 'Edit Position';
@@ -1103,18 +1125,33 @@ class CryptoTraderApp {
         const pnlPct = entry > 0 ? (pos.type === 'LONG' ? ((exitPrice - entry) / entry * 100) : ((entry - exitPrice) / entry * 100)) : 0;
         const closeNotes = document.getElementById('closeNotes').value.trim();
         
+        // Calculate position duration
+        const openDate = new Date(pos.dateOpened + 'T00:00:00');
+        const closeDate = new Date();
+        const diffMs = closeDate - openDate;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        let duration = '';
+        if (diffDays > 0) duration += `${diffDays}d `;
+        if (diffHours > 0) duration += `${diffHours}h `;
+        duration += `${diffMins}m`;
+        duration = duration.trim() || '0m';
+        
         try {
             this.showToast('Uploading screenshot...', 'info');
             document.getElementById('confirmCloseBtn').disabled = true;
             
-            // Upload screenshot to Google Drive
+            // Convert screenshot to base64
             let screenshotUrl = '';
-            const reader = new FileReader();
             const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
                 reader.onload = () => resolve(reader.result.split(',')[1]);
                 reader.onerror = reject;
                 reader.readAsDataURL(this.closeScreenshotFile);
             });
+            
+            const fullDataUrl = `data:${this.closeScreenshotFile.type};base64,${base64Data}`;
             
             if (cryptoAPI.isConfigured()) {
                 try {
@@ -1123,14 +1160,15 @@ class CryptoTraderApp {
                         mimeType: this.closeScreenshotFile.type,
                         fileName: `${pos.pair.replace('/', '-')}_close_${getTodayStr()}_${Date.now()}.${this.closeScreenshotFile.name.split('.').pop()}`
                     });
-                    screenshotUrl = uploadResult.downloadUrl || uploadResult.fileUrl || '';
+                    screenshotUrl = uploadResult.downloadUrl || uploadResult.fileUrl || uploadResult.url || '';
                 } catch (uploadErr) {
                     console.warn('Screenshot upload failed:', uploadErr);
-                    this.showToast('Screenshot upload failed, continuing...', 'warning');
+                    this.showToast('Screenshot upload failed, saving locally...', 'warning');
+                    screenshotUrl = fullDataUrl;
                 }
             } else {
-                // Demo mode — store as data URL locally
-                screenshotUrl = `data:${this.closeScreenshotFile.type};base64,${base64Data}`;
+                // Demo mode — store as data URL
+                screenshotUrl = fullDataUrl;
             }
             
             this.showToast('Closing position...', 'info');
@@ -1149,25 +1187,45 @@ class CryptoTraderApp {
                 pnlPercent: pnlPct.toFixed(2),
                 status: 'CLOSED',
                 notes: ((pos.notes || '') + (pos.notes ? ' | ' : '') + 'Closed from position' + (closeNotes ? ' | ' + closeNotes : '')).trim(),
-                screenshotUrl: screenshotUrl
+                screenshotUrl: screenshotUrl,
+                dateOpened: pos.dateOpened || '',
+                dateClosed: getTodayStr(),
+                duration: duration
             };
             
             if (cryptoAPI.isConfigured()) {
-                await cryptoAPI.closePosition({ rowIndex: pos.rowIndex, exitPrice: exitPrice });
+                await cryptoAPI.closePosition({ 
+                    rowIndex: pos.rowIndex, 
+                    exitPrice: exitPrice,
+                    screenshotUrl: screenshotUrl,
+                    duration: duration,
+                    dateOpened: pos.dateOpened || '',
+                    dateClosed: getTodayStr()
+                });
                 await this.syncData();
             } else {
                 trade.rowIndex = Date.now();
                 this.data.trades.push(trade);
                 this.data.positions = this.data.positions.filter(p => p.rowIndex !== pos.rowIndex);
+                // Save screenshot separately to avoid localStorage size limits
+                try {
+                    localStorage.setItem(`ctp_screenshot_${trade.rowIndex}`, screenshotUrl);
+                } catch (e) {
+                    console.warn('Screenshot local save failed (size limit):', e);
+                }
             }
             
             this.updatePortfolioBalance(pnl);
+            
+            // Force save cache with updated trades
+            cacheManager.save(this.data);
+            
             this.cancelClosePosition();
             this.renderDashboard();
             const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'positions';
             this.renderTab(activeTab);
             
-            this.showToast(`Position closed! P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} | Balance updated`, pnl >= 0 ? 'success' : 'error');
+            this.showToast(`Position closed! P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} | Duration: ${duration}`, pnl >= 0 ? 'success' : 'error');
         } catch (error) {
             console.error('Close position error:', error);
             this.showToast('Failed to close position: ' + error.message, 'error');
@@ -1511,13 +1569,13 @@ class CryptoTraderApp {
         const reminders = (this.data.reminders || []).filter(r => r.status === 'ACTIVE');
         
         if (reminders.length === 0) {
-            track.innerHTML = '<span class="ticker-item">🔔 No active reminders — Stay sharp, trader!</span>';
+            track.innerHTML = '<span class="ticker-item">No active reminders — Stay sharp, trader!</span>';
             return;
         }
         
         // Build ticker items — duplicate for seamless loop
         const items = reminders.map(r => {
-            const typeIcon = { PRICE_ALERT: '💹', NEWS: '📰', EVENT: '📅', STRATEGY: '⚡', GENERAL: '🔔' }[r.type] || '🔔';
+            const typeIcon = { PRICE_ALERT: '💹', NEWS: '📰', EVENT: '📅', STRATEGY: '⚡', GENERAL: '📌' }[r.type] || '📌';
             const pairTag = r.pair ? `<span class="ticker-pair">${r.pair}</span>` : '';
             return `<span class="ticker-item">${typeIcon} <span class="ticker-type">${r.type || 'REMINDER'}</span> ${pairTag} ${r.message || ''}</span>`;
         }).join('');
@@ -1743,6 +1801,13 @@ class CryptoTraderApp {
     handleWithdraw() {
         const amount = parseFormattedNumber(document.getElementById('dwAmount').value);
         if (!amount || amount <= 0) { this.showToast('Enter a valid amount', 'warning'); return; }
+        
+        // Check if balance is sufficient
+        const stats = this.getStats();
+        if (amount > stats.currentBalance) {
+            this.showToast(`Insufficient balance! Current: $${stats.currentBalance.toFixed(2)}`, 'error');
+            return;
+        }
         
         const notes = document.getElementById('dwNotes').value.trim();
         const settings = getSettings();
