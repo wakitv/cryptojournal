@@ -43,6 +43,30 @@ class CryptoAPI {
         }
     }
     
+    async postRequest(action, payload = {}) {
+        if (!this.isConfigured()) {
+            throw new Error('Configure Web App URL in Settings');
+        }
+        
+        const url = this.settings.webAppUrl;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action, ...payload })
+            });
+            if (!response.ok) throw new Error('Network error');
+            const data = await response.json();
+            if (data.success === false) throw new Error(data.error || 'Unknown error');
+            return data;
+        } catch (error) {
+            console.error('API POST Error:', error);
+            throw error;
+        }
+    }
+    
     // ===== GET DATA =====
     async getAllData() { return await this.request('getData'); }
     async getTradesData() { return await this.request('getTradesData'); }
@@ -76,8 +100,11 @@ class CryptoAPI {
     // ===== PORTFOLIO =====
     async updatePortfolio(data) { return await this.request('updatePortfolio', { data }); }
     
-    // ===== SCREENSHOT =====
-    async uploadScreenshot(data) { return await this.request('uploadScreenshot', { data }); }
+    // ===== SCREENSHOT (POST - base64 too large for GET) =====
+    async uploadScreenshot(data) { return await this.postRequest('uploadScreenshot', data); }
+    
+    // ===== CLOSE POSITION WITH SCREENSHOT =====
+    async closePositionWithScreenshot(data) { return await this.postRequest('closePositionWithScreenshot', data); }
     
     // ===== TEST =====
     async testConnection() {
