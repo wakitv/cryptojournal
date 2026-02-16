@@ -99,15 +99,6 @@ body {
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.04);
 }
-.header-ticker::before {
-    content: '🔔';
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    font-size: 0.7rem;
-}
 .header-ticker::after {
     content: '';
     position: absolute;
@@ -781,4 +772,43 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     .wallpaper-title { font-size: 1.2rem; }
     .deposit-withdraw-row { grid-template-columns: 1fr; }
     .icon-preview-row { flex-direction: column; text-align: center; }
+}
+
+/* ===== TRADE DETAIL SCREENSHOT ===== */
+.detail-screenshot {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+.detail-screenshot .detail-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+.detail-screenshot-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+}
+.detail-screenshot-img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    display: block;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.detail-screenshot-img:hover { opacity: 0.85; }
+.screenshot-hint {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    padding: 4px 0 6px;
+    margin: 0;
+}
+.screenshot-badge {
+    cursor: default;
+    font-size: 0.9rem;
 }
