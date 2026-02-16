@@ -32,6 +32,11 @@
                 <button class="menu-btn" id="menuBtn"><span></span><span></span><span></span></button>
                 <h1 class="logo"><img src="assets/logo.png" alt="CryptoTrader" class="logo-icon"> CryptoTrader<span class="version">Pro</span></h1>
             </div>
+            <div class="header-ticker" id="headerTicker">
+                <div class="ticker-track" id="tickerTrack">
+                    <span class="ticker-item">No reminders set</span>
+                </div>
+            </div>
             <div class="header-right">
                 <div class="sync-status" id="syncStatus">
                     <span class="sync-dot"></span>
@@ -51,6 +56,12 @@
                 <li class="nav-item" data-tab="strategies"><span class="nav-icon">⚡</span><span class="nav-text">Strategies</span></li>
                 <li class="nav-item" data-tab="reminders"><span class="nav-icon">🔔</span><span class="nav-text">Reminders</span></li>
             </ul>
+            <div class="sidebar-strategy-rotator" id="sidebarStrategyRotator">
+                <div class="rotator-label">⚡ Strategy Tip</div>
+                <div class="rotator-content" id="rotatorContent">
+                    <span class="rotator-text">No strategies yet</span>
+                </div>
+            </div>
             <div class="sidebar-footer">
                 <button class="settings-btn" id="settingsBtn"><span class="nav-icon">⚙️</span><span class="nav-text">Settings</span></button>
             </div>
@@ -64,11 +75,6 @@
             <section class="tab-content active" id="tab-dashboard">
                 <div class="dashboard-wallpaper" id="dashboardWallpaper">
                     <div class="wallpaper-overlay"></div>
-                    <div class="wallpaper-content">
-                        <img src="assets/logo.png" alt="Logo" class="wallpaper-logo" id="wallpaperLogo">
-                        <h2 class="wallpaper-title">CryptoTrader Pro</h2>
-                        <p class="wallpaper-subtitle">Performance overview & analytics</p>
-                    </div>
                 </div>
 
                 <div class="stats-grid six">
@@ -373,7 +379,7 @@
                     <div class="icon-preview-row">
                         <img src="assets/logo.png" id="iconPreview" class="icon-preview" alt="Current Icon">
                         <div class="icon-info">
-                            <p class="icon-desc">Used as header logo, dashboard banner, and PWA icon</p>
+                            <p class="icon-desc">Used as header logo and dashboard banner</p>
                             <div class="upload-row">
                                 <label class="btn-sm upload-label" for="iconUpload">📷 Change Icon</label>
                                 <input type="file" id="iconUpload" accept="image/*" style="display:none">
