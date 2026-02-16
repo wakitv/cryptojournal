@@ -390,6 +390,15 @@
                 </div>
 
                 <div class="settings-section">
+                    <h4 class="settings-section-title">💱 Trading Pairs</h4>
+                    <div class="add-pair-row">
+                        <input type="text" id="newPairInput" class="form-input" placeholder="e.g. PEPE/USDT or PEPE">
+                        <button class="btn-sm" id="addPairBtn">+ Add</button>
+                    </div>
+                    <div id="customPairsList" class="custom-pairs-list"></div>
+                </div>
+
+                <div class="settings-section">
                     <h4 class="settings-section-title">🔗 API Connection</h4>
                     <div class="form-group"><label>Google Apps Script Web App URL</label><input type="url" id="webAppUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec"><button class="btn-sm" id="testConnection" style="margin-top:8px">Test Connection</button></div>
                     <div class="form-group toggle-group"><label>Auto Sync</label><input type="checkbox" id="autoSync" checked></div>
