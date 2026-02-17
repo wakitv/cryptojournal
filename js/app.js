@@ -343,9 +343,11 @@ class CryptoTraderApp {
         const todayTrades = closed.filter(t => getDateStr(t.date) === today);
         const todayPnL = todayTrades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0);
         
-        // Unrealized P&L from open positions
+        // Unrealized P&L from open positions (use OKX upl when available)
         const positions = this.data.positions || [];
         const unrealizedPnL = positions.reduce((s, p) => {
+            const hasOKXUpl = p.upl !== undefined && p.upl !== 0 && p.upl !== '';
+            if (hasOKXUpl) return s + parseFloat(p.upl);
             const entry = parseFloat(p.entryPrice) || 0;
             const current = parseFloat(p.currentPrice) || entry;
             const qty = parseFloat(p.quantity) || 0;
@@ -1242,14 +1244,20 @@ class CryptoTraderApp {
             const qty = parseFloat(p.quantity) || 0;
             const sl = parseFloat(p.stopLoss) || 0;
             const tp = parseFloat(p.takeProfit) || 0;
+            const lever = p.lever || '';
+            const margin = parseFloat(p.margin) || 0;
             
-            const upnl = p.type === 'LONG' ? (current - entry) * qty : (entry - current) * qty;
-            const upnlPct = entry > 0 ? (p.type === 'LONG' ? ((current - entry) / entry * 100) : ((entry - current) / entry * 100)) : 0;
+            // Use OKX's own upl if available (most accurate), fallback to calculation
+            const hasOKXUpl = p.upl !== undefined && p.upl !== 0 && p.upl !== '';
+            const upnl = hasOKXUpl ? parseFloat(p.upl) : (p.type === 'LONG' ? (current - entry) * qty : (entry - current) * qty);
+            const upnlPct = hasOKXUpl && p.uplRatio ? (parseFloat(p.uplRatio) * 100) : (entry > 0 ? (p.type === 'LONG' ? ((current - entry) / entry * 100) : ((entry - current) / entry * 100)) : 0);
             
             const range = tp - sl || 1;
             const progress = Math.min(Math.max(((current - sl) / range) * 100, 0), 100);
             
             const isOKX = (p.notes || '').includes('[OKX:');
+            const leverBadge = lever ? `<span class="lever-badge">${lever}x</span>` : '';
+            const marginInfo = margin > 0 ? `<div class="pos-stat"><span class="pos-label">Margin</span><span class="pos-value mono-text">$${formatWithCommas(margin)}</span></div>` : '';
             
             return `
                 <div class="position-card ${getValueClass(upnl)}">
@@ -1257,6 +1265,7 @@ class CryptoTraderApp {
                         <div class="position-pair">
                             <span style="color:${getPairColor(p.pair)};font-weight:800;font-size:1.1rem">${p.pair}</span>
                             <span class="type-badge ${p.type.toLowerCase()}">${p.type}</span>
+                            ${leverBadge}
                             ${isOKX ? '<span class="okx-badge">OKX</span>' : ''}
                             <span class="strategy-tag">${p.strategy || ''}</span>
                         </div>
@@ -1268,8 +1277,10 @@ class CryptoTraderApp {
                     <div class="position-grid">
                         <div class="pos-stat"><span class="pos-label">Entry</span><span class="pos-value mono-text">$${formatWithCommas(entry)}</span></div>
                         <div class="pos-stat"><span class="pos-label">Current</span><span class="pos-value mono-text${this.livePrices[p.pair] ? ' price-live' : ''}">$${formatWithCommas(current)}</span></div>
-                        <div class="pos-stat"><span class="pos-label">Stop Loss</span><span class="pos-value mono-text negative">$${formatWithCommas(sl)}</span></div>
-                        <div class="pos-stat"><span class="pos-label">Take Profit</span><span class="pos-value mono-text positive">$${formatWithCommas(tp)}</span></div>
+                        <div class="pos-stat"><span class="pos-label">Size</span><span class="pos-value mono-text">${formatWithCommas(qty)}</span></div>
+                        ${marginInfo}
+                        <div class="pos-stat"><span class="pos-label">Stop Loss</span><span class="pos-value mono-text negative">${sl > 0 ? '$' + formatWithCommas(sl) : '—'}</span></div>
+                        <div class="pos-stat"><span class="pos-label">Take Profit</span><span class="pos-value mono-text positive">${tp > 0 ? '$' + formatWithCommas(tp) : '—'}</span></div>
                     </div>
                     <div class="position-progress">
                         <div class="progress-bar">
