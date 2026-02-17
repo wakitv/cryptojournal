@@ -800,6 +800,7 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
 .pair-tag.default {
     background: rgba(255,255,255,0.05);
     color: var(--text-muted);
+    border: 1px solid rgba(255,255,255,0.06);
 }
 .pair-tag.custom {
     background: rgba(0,255,136,0.1);
@@ -816,6 +817,61 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     line-height: 1;
 }
 .pair-remove:hover { color: #ff0000; }
+
+/* ===== DURATION TOGGLE ===== */
+.duration-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.dur-btn {
+    flex: 1;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-muted);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.dur-btn.active {
+    background: rgba(0,255,136,0.12);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+.dur-auto-display {
+    padding: 8px 12px;
+    background: rgba(0,255,136,0.05);
+    border-radius: 8px;
+    color: var(--cyan);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+/* ===== TRADE SCREENSHOT (in edit modal) ===== */
+.trade-screenshot-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.trade-screenshot-preview {
+    flex: 1;
+    min-height: 40px;
+}
+.trade-ss-thumb {
+    max-height: 80px;
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    object-fit: contain;
+}
+.trade-screenshot-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
 
 /* ===== TRADE DETAIL SCREENSHOT ===== */
 .detail-screenshot {
