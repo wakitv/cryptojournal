@@ -1138,6 +1138,12 @@ class CryptoTraderApp {
         // Populate pair dropdown
         this.populatePairDropdown('posPair', editData?.pair || '');
         
+        // Auto-fetch live price when pair changes
+        const pairSelect = el('posPair');
+        if (pairSelect) {
+            pairSelect.onchange = () => this.autoFillLivePrice(pairSelect.value);
+        }
+        
         // Populate strategy dropdown from saved strategies
         const stratSelect = el('posStrategy');
         if (stratSelect) {
@@ -1162,6 +1168,8 @@ class CryptoTraderApp {
         } else {
             if (el('positionModalTitle')) el('positionModalTitle').textContent = 'New Position';
             if (el('posDate')) el('posDate').value = getTodayStr();
+            // Auto-fetch price for default selected pair
+            if (pairSelect?.value) this.autoFillLivePrice(pairSelect.value);
         }
         
         if (el('positionModal')) el('positionModal').classList.add('active');
@@ -1170,6 +1178,59 @@ class CryptoTraderApp {
     
     closePositionModal() {
         document.getElementById('positionModal')?.classList.remove('active');
+    }
+    
+    async autoFillLivePrice(pair) {
+        if (!pair) return;
+        const currentInput = document.getElementById('posCurrent');
+        if (!currentInput) return;
+        
+        // Show loading state
+        currentInput.value = 'Loading...';
+        currentInput.style.color = 'var(--cyan)';
+        
+        try {
+            let price = null;
+            
+            // Check cached prices first
+            if (this.livePrices[pair]) {
+                price = this.livePrices[pair];
+            } else if (cryptoAPI.isConfigured()) {
+                // Fetch from backend
+                const result = await cryptoAPI.getLivePrices([pair]);
+                if (result.success && result.prices && result.prices[pair]) {
+                    price = result.prices[pair];
+                    this.livePrices[pair] = price;
+                }
+            } else {
+                // Demo: try direct OKX fetch
+                try {
+                    const okxId = pair.replace('/', '-');
+                    const resp = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${okxId}`);
+                    const json = await resp.json();
+                    if (json.code === '0' && json.data?.[0]) {
+                        price = parseFloat(json.data[0].last);
+                        this.livePrices[pair] = price;
+                    }
+                } catch (e) { console.warn('Direct OKX fetch failed:', e); }
+            }
+            
+            if (price) {
+                currentInput.value = price;
+                currentInput.style.color = 'var(--cyan)';
+                // Brief flash to show it's live
+                currentInput.style.transition = 'background 0.3s';
+                currentInput.style.background = 'rgba(0,200,255,0.1)';
+                setTimeout(() => { currentInput.style.background = ''; }, 1000);
+            } else {
+                currentInput.value = '0.00';
+                currentInput.style.color = '';
+            }
+        } catch (err) {
+            console.warn('Auto price fetch failed:', err);
+            currentInput.value = '0.00';
+            currentInput.style.color = '';
+        }
     }
     
     async savePositionEntry() {
