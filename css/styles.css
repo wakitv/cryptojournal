@@ -919,6 +919,63 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     gap: 6px;
 }
 
+/* ===== OKX SYNC ===== */
+.okx-sync-btn {
+    background: rgba(255,200,0,0.08);
+    border: 1px solid rgba(255,200,0,0.2);
+    color: var(--gold);
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.okx-sync-btn:hover { background: rgba(255,200,0,0.15); }
+.okx-sync-btn.syncing { opacity: 0.6; pointer-events: none; }
+.okx-badge {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    background: rgba(255,200,0,0.12);
+    color: var(--gold);
+    border: 1px solid rgba(255,200,0,0.25);
+    letter-spacing: 0.5px;
+}
+.okx-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+.okx-status-badge.connected {
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.15);
+    color: var(--green);
+}
+.okx-status-badge.disconnected {
+    background: rgba(255,68,68,0.06);
+    border: 1px solid rgba(255,68,68,0.12);
+    color: var(--text-muted);
+}
+.okx-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+}
+.okx-status-badge.connected .okx-status-dot { background: var(--green); animation: pulse 2s ease infinite; }
+.okx-status-badge.disconnected .okx-status-dot { background: var(--text-muted); }
+.okx-save-btn {
+    background: rgba(255,200,0,0.1);
+    border: 1px solid rgba(255,200,0,0.2);
+    color: var(--gold);
+}
+.okx-save-btn:hover { background: rgba(255,200,0,0.2); }
+
 /* ===== LIVE PRICES ===== */
 .page-header-actions {
     display: flex;
