@@ -100,6 +100,10 @@ class CryptoAPI {
     // ===== PORTFOLIO =====
     async updatePortfolio(data) { return await this.request('updatePortfolio', { data }); }
     
+    // ===== LIVE PRICES (OKX) =====
+    async getLivePrices(pairs) { return await this.request('getLivePrices', { pairs }); }
+    async refreshPositionPrices() { return await this.request('refreshPositionPrices'); }
+    
     // ===== SCREENSHOT (POST - base64 too large for GET) =====
     async uploadScreenshot(data) { return await this.postRequest('uploadScreenshot', data); }
     
