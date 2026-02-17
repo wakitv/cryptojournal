@@ -104,6 +104,12 @@ class CryptoAPI {
     async getLivePrices(pairs) { return await this.request('getLivePrices', { pairs }); }
     async refreshPositionPrices() { return await this.request('refreshPositionPrices'); }
     
+    // ===== OKX TRADE SYNC =====
+    async setOKXCredentials(data) { return await this.postRequest('setOKXCredentials', data); }
+    async getOKXStatus() { return await this.request('getOKXStatus'); }
+    async testOKXConnection() { return await this.request('testOKXConnection'); }
+    async syncOKXData() { return await this.request('syncOKXData'); }
+    
     // ===== SCREENSHOT (POST - base64 too large for GET) =====
     async uploadScreenshot(data) { return await this.postRequest('uploadScreenshot', data); }
     
