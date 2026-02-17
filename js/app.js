@@ -1375,6 +1375,8 @@ class CryptoTraderApp {
                             dateOpened: pos.dateOpened || '', dateClosed: getTodayStr()
                         });
                         await this.syncData();
+                        // Write correct computed balance to sheet
+                        this.updatePortfolioBalance();
                     } catch (e) { console.warn('API sync failed:', e); }
                 }
             } catch (err) { console.error('Background save error:', err); }
