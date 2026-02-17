@@ -99,8 +99,6 @@ class CryptoTraderApp {
         document.getElementById('closeExitPrice')?.addEventListener('input', () => this.updateClosePnLPreview());
         
         // Add buttons (no addTradeBtn - trades only come from closed positions)
-        document.getElementById('refreshPricesBtn')?.addEventListener('click', () => this.refreshLivePrices());
-        document.getElementById('syncOKXBtn')?.addEventListener('click', () => this.syncOKXTrades());
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
         document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
         
@@ -153,6 +151,8 @@ class CryptoTraderApp {
     async handleRefresh() {
         const btn = document.getElementById('refreshBtn');
         if (btn) btn.classList.add('spinning');
+        // OKX sync first (updates positions + prices + balance), then pull sheet data
+        if (this.okxConfigured) await this.syncOKXTrades(true);
         await this.syncData();
         setTimeout(() => { if (btn) btn.classList.remove('spinning'); }, 1000);
     }
@@ -1292,10 +1292,7 @@ class CryptoTraderApp {
                     </div>
                     <div class="position-footer">
                         <span class="pos-date">Opened ${formatDate(p.dateOpened)}</span>
-                        <div class="pos-actions">
-                            <button class="action-btn close-pos" onclick="app.closePositionPrompt(${p.rowIndex})">Close</button>
-                            <button class="action-btn delete" onclick="app.deletePosition(${p.rowIndex})">✕</button>
-                        </div>
+                    </div>
                     </div>
                 </div>
             `;
