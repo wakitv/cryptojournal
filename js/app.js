@@ -99,7 +99,6 @@ class CryptoTraderApp {
         document.getElementById('closeExitPrice')?.addEventListener('input', () => this.updateClosePnLPreview());
         
         // Add buttons (no addTradeBtn - trades only come from closed positions)
-        document.getElementById('addPositionBtn')?.addEventListener('click', () => this.openPositionModal());
         document.getElementById('refreshPricesBtn')?.addEventListener('click', () => this.refreshLivePrices());
         document.getElementById('syncOKXBtn')?.addEventListener('click', () => this.syncOKXTrades());
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
@@ -1275,7 +1274,6 @@ class CryptoTraderApp {
                     <div class="position-footer">
                         <span class="pos-date">Opened ${formatDate(p.dateOpened)}</span>
                         <div class="pos-actions">
-                            <button class="action-btn edit" onclick="app.editPosition(${p.rowIndex})">Edit</button>
                             <button class="action-btn close-pos" onclick="app.closePositionPrompt(${p.rowIndex})">Close</button>
                             <button class="action-btn delete" onclick="app.deletePosition(${p.rowIndex})">✕</button>
                         </div>
@@ -1285,165 +1283,7 @@ class CryptoTraderApp {
         }).join('');
     }
     
-    // ===== POSITION MODAL =====
-    
-    openPositionModal(editData = null) {
-        const el = (id) => document.getElementById(id);
-        if (el('positionForm')) el('positionForm').reset();
-        if (el('positionRowIndex')) el('positionRowIndex').value = '';
-        
-        // Populate pair dropdown
-        this.populatePairDropdown('posPair', editData?.pair || '');
-        
-        // Auto-fetch live price when pair changes
-        const pairSelect = el('posPair');
-        if (pairSelect) {
-            pairSelect.onchange = () => this.autoFillLivePrice(pairSelect.value);
-        }
-        
-        // Populate strategy dropdown from saved strategies
-        const stratSelect = el('posStrategy');
-        if (stratSelect) {
-            const strategies = this.data.strategies || [];
-            stratSelect.innerHTML = '<option value="">Select strategy</option>' +
-                strategies.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-        }
-        
-        if (editData) {
-            if (el('positionModalTitle')) el('positionModalTitle').textContent = 'Edit Position';
-            if (el('positionRowIndex')) el('positionRowIndex').value = editData.rowIndex;
-            if (el('posDate')) el('posDate').value = formatDateForInput(editData.dateOpened);
-            if (el('posPair')) el('posPair').value = editData.pair;
-            if (el('posType')) el('posType').value = editData.type;
-            if (el('posStrategy')) el('posStrategy').value = editData.strategy || '';
-            if (el('posEntry')) el('posEntry').value = editData.entryPrice;
-            if (el('posCurrent')) el('posCurrent').value = editData.currentPrice || '';
-            if (el('posQty')) el('posQty').value = editData.quantity;
-            if (el('posSL')) el('posSL').value = editData.stopLoss || '';
-            if (el('posTP')) el('posTP').value = editData.takeProfit || '';
-            if (el('posNotes')) el('posNotes').value = editData.notes || '';
-        } else {
-            if (el('positionModalTitle')) el('positionModalTitle').textContent = 'New Position';
-            if (el('posDate')) el('posDate').value = getTodayStr();
-            // Auto-fetch price for default selected pair
-            if (pairSelect?.value) this.autoFillLivePrice(pairSelect.value);
-        }
-        
-        if (el('positionModal')) el('positionModal').classList.add('active');
-        setTimeout(() => this.setupAmountInputs(), 100);
-    }
-    
-    closePositionModal() {
-        document.getElementById('positionModal')?.classList.remove('active');
-    }
-    
-    async autoFillLivePrice(pair) {
-        if (!pair) return;
-        const currentInput = document.getElementById('posCurrent');
-        if (!currentInput) return;
-        
-        // Show loading state
-        currentInput.value = 'Loading...';
-        currentInput.style.color = 'var(--cyan)';
-        
-        try {
-            let price = null;
-            
-            // Check cached prices first
-            if (this.livePrices[pair]) {
-                price = this.livePrices[pair];
-            } else if (cryptoAPI.isConfigured()) {
-                // Fetch from backend
-                const result = await cryptoAPI.getLivePrices([pair]);
-                if (result.success && result.prices && result.prices[pair]) {
-                    price = result.prices[pair];
-                    this.livePrices[pair] = price;
-                }
-            } else {
-                // Demo: try direct OKX fetch
-                try {
-                    const okxId = pair.replace('/', '-');
-                    const resp = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${okxId}`);
-                    const json = await resp.json();
-                    if (json.code === '0' && json.data?.[0]) {
-                        price = parseFloat(json.data[0].last);
-                        this.livePrices[pair] = price;
-                    }
-                } catch (e) { console.warn('Direct OKX fetch failed:', e); }
-            }
-            
-            if (price) {
-                currentInput.value = price;
-                currentInput.style.color = 'var(--cyan)';
-                // Brief flash to show it's live
-                currentInput.style.transition = 'background 0.3s';
-                currentInput.style.background = 'rgba(0,200,255,0.1)';
-                setTimeout(() => { currentInput.style.background = ''; }, 1000);
-            } else {
-                currentInput.value = '0.00';
-                currentInput.style.color = '';
-            }
-        } catch (err) {
-            console.warn('Auto price fetch failed:', err);
-            currentInput.value = '0.00';
-            currentInput.style.color = '';
-        }
-    }
-    
-    async savePositionEntry() {
-        if (this.isSaving) return;
-        const el = (id) => document.getElementById(id);
-        const rowIndex = el('positionRowIndex')?.value;
-        const entryPrice = parseFormattedNumber(el('posEntry')?.value);
-        
-        if (!el('posPair')?.value || entryPrice <= 0) {
-            this.showToast('Fill required fields', 'warning'); return;
-        }
-        
-        const data = {
-            dateOpened: el('posDate')?.value || getTodayStr(),
-            pair: el('posPair')?.value,
-            type: el('posType')?.value || 'LONG',
-            strategy: el('posStrategy')?.value || '',
-            entryPrice,
-            currentPrice: parseFormattedNumber(el('posCurrent')?.value) || entryPrice,
-            quantity: parseFormattedNumber(el('posQty')?.value) || 1,
-            stopLoss: parseFormattedNumber(el('posSL')?.value) || '',
-            takeProfit: parseFormattedNumber(el('posTP')?.value) || '',
-            notes: el('posNotes')?.value || ''
-        };
-        
-        if (rowIndex) data.rowIndex = parseInt(rowIndex);
-        
-        this.isSaving = true;
-        try {
-            this.showToast('Saving...', 'info');
-            if (cryptoAPI.isConfigured()) {
-                if (rowIndex) await cryptoAPI.updatePosition(data);
-                else await cryptoAPI.addPosition(data);
-                this.closePositionModal();
-                await this.syncData();
-            } else {
-                if (rowIndex) {
-                    const idx = this.data.positions.findIndex(p => p.rowIndex == rowIndex);
-                    if (idx > -1) this.data.positions[idx] = { ...this.data.positions[idx], ...data };
-                } else {
-                    data.rowIndex = Date.now();
-                    this.data.positions.push(data);
-                }
-                cacheManager.save(this.data);
-                this.closePositionModal();
-                this.renderTab('positions');
-            }
-            this.showToast('Position saved!', 'success');
-        } catch (error) { this.showToast(error.message, 'error'); }
-        finally { this.isSaving = false; }
-    }
-    
-    editPosition(rowIndex) {
-        const item = this.data.positions.find(p => p.rowIndex === rowIndex);
-        if (item) this.openPositionModal(item);
-    }
+    // ===== POSITION ACTIONS =====
     
     async deletePosition(rowIndex) {
         if (!confirm('Delete this position? This cannot be undone.')) return;
