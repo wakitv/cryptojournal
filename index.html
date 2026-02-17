@@ -169,7 +169,14 @@
             <section class="tab-content" id="tab-positions">
                 <div class="page-header">
                     <h2 class="page-title">Open Positions</h2>
-                    <button class="btn-primary" id="addPositionBtn">+ New Position</button>
+                    <div class="page-header-actions">
+                        <div id="livePriceStatus" class="live-price-status" style="display:none">
+                            <span class="live-dot"></span>
+                            <span class="live-text">Live</span>
+                        </div>
+                        <button class="btn-sm live-btn" id="refreshPricesBtn" title="Fetch live prices from OKX">📡 Refresh Prices</button>
+                        <button class="btn-primary" id="addPositionBtn">+ New Position</button>
+                    </div>
                 </div>
                 <div id="positionsContainer" class="positions-grid"></div>
             </section>
