@@ -808,6 +808,8 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     /* Position cards */
     .position-card { padding: 14px; }
     .position-header { flex-direction: column; gap: 8px; }
+    .page-header-actions { flex-wrap: wrap; gap: 6px; }
+    .page-header-actions .btn-primary { font-size: 0.78rem; }
     
     /* Close position modal */
     .close-pos-info { font-size: 0.85rem; }
@@ -915,6 +917,67 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+/* ===== LIVE PRICES ===== */
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.live-price-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.15);
+}
+.live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease infinite;
+}
+.live-text {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.live-btn {
+    background: rgba(0,200,255,0.08);
+    border: 1px solid rgba(0,200,255,0.2);
+    color: var(--cyan);
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.live-btn:hover { background: rgba(0,200,255,0.15); }
+.live-btn.refreshing {
+    opacity: 0.6;
+    pointer-events: none;
+    animation: pulse 1s ease infinite;
+}
+.price-live {
+    color: var(--cyan) !important;
+    position: relative;
+}
+.price-live::after {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    display: inline-block;
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: pulse 2s ease infinite;
 }
 
 /* ===== TRADE DETAIL SCREENSHOT ===== */
