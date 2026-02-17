@@ -1154,6 +1154,16 @@ class CryptoTraderApp {
             if (result.success) {
                 this.showToast('✅ OKX connected successfully!', 'success');
                 await this.checkOKXStatus();
+                
+                // Also run position debug
+                try {
+                    const debug = await cryptoAPI.debugOKXPositions();
+                    if (debug.success) {
+                        console.log('OKX Debug:', debug);
+                        const msg = `📊 ${debug.message}`;
+                        setTimeout(() => this.showToast(msg, 'info'), 1500);
+                    }
+                } catch (e) { /* ignore */ }
             } else {
                 this.showToast('❌ ' + (result.error || 'Connection failed'), 'error');
             }
