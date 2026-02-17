@@ -29,6 +29,9 @@ class CryptoTraderApp {
         this.tradeScreenshotFile = null;
         this.tradeScreenshotUrl = '';
         this.isSaving = false;
+        this.livePrices = {};
+        this.lastPriceRefresh = 0;
+        this.priceRefreshInterval = null;
         this.strategyRotatorIndex = 0;
         this.strategyRotatorInterval = null;
         this.loadFromCache();
@@ -96,6 +99,7 @@ class CryptoTraderApp {
         
         // Add buttons (no addTradeBtn - trades only come from closed positions)
         document.getElementById('addPositionBtn')?.addEventListener('click', () => this.openPositionModal());
+        document.getElementById('refreshPricesBtn')?.addEventListener('click', () => this.refreshLivePrices());
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
         document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
         
@@ -123,10 +127,19 @@ class CryptoTraderApp {
     }
     
     renderTab(tab) {
+        // Stop price refresh when leaving positions
+        if (tab !== 'positions' && this.priceRefreshInterval) {
+            clearInterval(this.priceRefreshInterval);
+            this.priceRefreshInterval = null;
+        }
+        
         switch (tab) {
             case 'dashboard': this.renderDashboard(); break;
             case 'trades': this.renderTradesTab(); break;
-            case 'positions': this.renderPositionsTab(); break;
+            case 'positions': 
+                this.renderPositionsTab();
+                this.startPriceAutoRefresh();
+                break;
             case 'strategies': this.renderStrategiesTab(); break;
             case 'reminders': this.renderRemindersTab(); break;
         }
@@ -960,6 +973,95 @@ class CryptoTraderApp {
     
     // ===== POSITIONS TAB =====
     
+    // ===== LIVE PRICES (OKX) =====
+    
+    startPriceAutoRefresh() {
+        if (this.priceRefreshInterval) clearInterval(this.priceRefreshInterval);
+        
+        // Auto-refresh every 30 seconds when on positions tab
+        if (cryptoAPI.isConfigured() && (this.data.positions || []).length > 0) {
+            // Refresh immediately if stale (>30s)
+            if (Date.now() - this.lastPriceRefresh > 30000) {
+                this.refreshLivePrices(true);
+            }
+            this.priceRefreshInterval = setInterval(() => this.refreshLivePrices(true), 30000);
+        }
+    }
+    
+    async refreshLivePrices(silent = false) {
+        const positions = this.data.positions || [];
+        if (positions.length === 0) {
+            if (!silent) this.showToast('No open positions to refresh', 'info');
+            return;
+        }
+        
+        const btn = document.getElementById('refreshPricesBtn');
+        const statusEl = document.getElementById('livePriceStatus');
+        
+        if (btn) btn.classList.add('refreshing');
+        if (!silent) this.showToast('Fetching live prices...', 'info');
+        
+        try {
+            const pairs = [...new Set(positions.map(p => p.pair).filter(p => p))];
+            let prices = {};
+            
+            if (cryptoAPI.isConfigured()) {
+                // Use backend (server-side, no CORS issues)
+                const result = await cryptoAPI.refreshPositionPrices();
+                if (result.success) {
+                    prices = result.prices || {};
+                    // Sync to get updated current prices from sheet
+                    await this.syncData();
+                }
+            } else {
+                // Demo mode: fetch directly from OKX public API
+                try {
+                    const resp = await fetch('https://www.okx.com/api/v5/market/tickers?instType=SPOT');
+                    const json = await resp.json();
+                    if (json.code === '0' && json.data) {
+                        json.data.forEach(t => {
+                            const pair = t.instId.replace('-', '/');
+                            if (pairs.includes(pair)) prices[pair] = parseFloat(t.last);
+                        });
+                    }
+                } catch (e) {
+                    // CORS fallback — just show last known prices
+                    console.warn('Direct OKX fetch failed (CORS):', e);
+                }
+                
+                // Update local positions
+                if (Object.keys(prices).length > 0) {
+                    positions.forEach(p => {
+                        if (prices[p.pair]) p.currentPrice = prices[p.pair];
+                    });
+                    cacheManager.save(this.data);
+                }
+            }
+            
+            this.livePrices = prices;
+            this.lastPriceRefresh = Date.now();
+            
+            // Show live indicator
+            if (statusEl && Object.keys(prices).length > 0) {
+                statusEl.style.display = 'flex';
+            }
+            
+            // Re-render positions with new prices
+            this.renderPositionsTab();
+            this.renderDashboard();
+            
+            if (!silent) {
+                const count = Object.keys(prices).length;
+                this.showToast(`Updated ${count} pair${count !== 1 ? 's' : ''} from OKX`, 'success');
+            }
+        } catch (err) {
+            console.error('Price refresh error:', err);
+            if (!silent) this.showToast('Price refresh failed: ' + err.message, 'error');
+        } finally {
+            if (btn) btn.classList.remove('refreshing');
+        }
+    }
+    
     renderPositionsTab() {
         const container = document.getElementById('positionsContainer');
         if (!container) return;
@@ -999,7 +1101,7 @@ class CryptoTraderApp {
                     </div>
                     <div class="position-grid">
                         <div class="pos-stat"><span class="pos-label">Entry</span><span class="pos-value mono-text">$${formatWithCommas(entry)}</span></div>
-                        <div class="pos-stat"><span class="pos-label">Current</span><span class="pos-value mono-text">$${formatWithCommas(current)}</span></div>
+                        <div class="pos-stat"><span class="pos-label">Current</span><span class="pos-value mono-text${this.livePrices[p.pair] ? ' price-live' : ''}">$${formatWithCommas(current)}</span></div>
                         <div class="pos-stat"><span class="pos-label">Stop Loss</span><span class="pos-value mono-text negative">$${formatWithCommas(sl)}</span></div>
                         <div class="pos-stat"><span class="pos-label">Take Profit</span><span class="pos-value mono-text positive">$${formatWithCommas(tp)}</span></div>
                     </div>
