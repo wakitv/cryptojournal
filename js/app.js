@@ -1279,8 +1279,6 @@ class CryptoTraderApp {
                         <div class="pos-stat"><span class="pos-label">Current</span><span class="pos-value mono-text${this.livePrices[p.pair] ? ' price-live' : ''}">$${formatWithCommas(current)}</span></div>
                         <div class="pos-stat"><span class="pos-label">Size</span><span class="pos-value mono-text">${formatWithCommas(qty)}</span></div>
                         ${marginInfo}
-                        <div class="pos-stat"><span class="pos-label">Stop Loss</span><span class="pos-value mono-text negative">${sl > 0 ? '$' + formatWithCommas(sl) : '—'}</span></div>
-                        <div class="pos-stat"><span class="pos-label">Take Profit</span><span class="pos-value mono-text positive">${tp > 0 ? '$' + formatWithCommas(tp) : '—'}</span></div>
                     </div>
                     <div class="position-progress">
                         <div class="progress-bar">
