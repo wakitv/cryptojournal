@@ -28,6 +28,7 @@ class CryptoTraderApp {
         this.closeScreenshotFile = null;
         this.tradeScreenshotFile = null;
         this.tradeScreenshotUrl = '';
+        this.isSaving = false;
         this.strategyRotatorIndex = 0;
         this.strategyRotatorInterval = null;
         this.loadFromCache();
@@ -800,6 +801,7 @@ class CryptoTraderApp {
     }
     
     async saveTradeEntry() {
+        if (this.isSaving) return;
         const el = (id) => document.getElementById(id);
         const rowIndex = el('tradeRowIndex')?.value;
         const date = el('tradeDate')?.value;
@@ -861,6 +863,7 @@ class CryptoTraderApp {
         
         if (rowIndex) data.rowIndex = parseInt(rowIndex);
         
+        this.isSaving = true;
         try {
             this.showToast('Saving...', 'info');
             if (cryptoAPI.isConfigured()) {
@@ -889,7 +892,7 @@ class CryptoTraderApp {
             this.showToast('Trade saved!', 'success');
         } catch (error) {
             this.showToast(error.message, 'error');
-        }
+        } finally { this.isSaving = false; }
     }
     
     editTrade(rowIndex) {
@@ -905,6 +908,9 @@ class CryptoTraderApp {
                 await this.syncData();
             } else {
                 this.data.trades = this.data.trades.filter(t => t.rowIndex !== rowIndex);
+                cacheManager.save(this.data);
+                this.updatePortfolioBalance();
+                this.renderDashboard();
                 this.renderTab(document.querySelector('.nav-item.active')?.dataset.tab || 'trades');
             }
             this.showToast('Deleted!', 'success');
@@ -1012,6 +1018,7 @@ class CryptoTraderApp {
                         <div class="pos-actions">
                             <button class="action-btn edit" onclick="app.editPosition(${p.rowIndex})">Edit</button>
                             <button class="action-btn close-pos" onclick="app.closePositionPrompt(${p.rowIndex})">Close</button>
+                            <button class="action-btn delete" onclick="app.deletePosition(${p.rowIndex})">✕</button>
                         </div>
                     </div>
                 </div>
@@ -1064,6 +1071,7 @@ class CryptoTraderApp {
     }
     
     async savePositionEntry() {
+        if (this.isSaving) return;
         const el = (id) => document.getElementById(id);
         const rowIndex = el('positionRowIndex')?.value;
         const entryPrice = parseFormattedNumber(el('posEntry')?.value);
@@ -1087,6 +1095,7 @@ class CryptoTraderApp {
         
         if (rowIndex) data.rowIndex = parseInt(rowIndex);
         
+        this.isSaving = true;
         try {
             this.showToast('Saving...', 'info');
             if (cryptoAPI.isConfigured()) {
@@ -1102,16 +1111,34 @@ class CryptoTraderApp {
                     data.rowIndex = Date.now();
                     this.data.positions.push(data);
                 }
+                cacheManager.save(this.data);
                 this.closePositionModal();
                 this.renderTab('positions');
             }
             this.showToast('Position saved!', 'success');
         } catch (error) { this.showToast(error.message, 'error'); }
+        finally { this.isSaving = false; }
     }
     
     editPosition(rowIndex) {
         const item = this.data.positions.find(p => p.rowIndex === rowIndex);
         if (item) this.openPositionModal(item);
+    }
+    
+    async deletePosition(rowIndex) {
+        if (!confirm('Delete this position? This cannot be undone.')) return;
+        try {
+            if (cryptoAPI.isConfigured()) {
+                await cryptoAPI.deletePosition(rowIndex);
+                await this.syncData();
+            } else {
+                this.data.positions = this.data.positions.filter(p => p.rowIndex !== rowIndex);
+                cacheManager.save(this.data);
+                this.renderTab('positions');
+            }
+            this.renderDashboard();
+            this.showToast('Position deleted!', 'success');
+        } catch (error) { this.showToast(error.message, 'error'); }
     }
     
     // ===== CLOSE POSITION → TRADE JOURNAL + UPDATE BALANCE =====
@@ -1237,7 +1264,8 @@ class CryptoTraderApp {
     }
     
     async confirmClosePosition() {
-        if (!this.closePositionData) return;
+        if (!this.closePositionData || this.isSaving) return;
+        this.isSaving = true;
         const pos = this.closePositionData;
         
         const exitPrice = parseFormattedNumber(document.getElementById('closeExitPrice').value);
@@ -1275,6 +1303,7 @@ class CryptoTraderApp {
         
         // Close modal INSTANTLY
         this.cancelClosePosition();
+        this.isSaving = false;
         
         // Optimistic update
         const trade = {
@@ -1428,6 +1457,7 @@ class CryptoTraderApp {
     }
     
     async saveStrategyEntry() {
+        if (this.isSaving) return;
         const el = (id) => document.getElementById(id);
         const name = el('stratName')?.value?.trim();
         if (!name) { this.showToast('Enter strategy name', 'warning'); return; }
@@ -1443,6 +1473,7 @@ class CryptoTraderApp {
         
         if (rowIndex) data.rowIndex = parseInt(rowIndex);
         
+        this.isSaving = true;
         try {
             if (cryptoAPI.isConfigured()) {
                 if (rowIndex) await cryptoAPI.updateStrategy(data);
@@ -1457,11 +1488,13 @@ class CryptoTraderApp {
                     data.rowIndex = Date.now();
                     this.data.strategies.push(data);
                 }
+                cacheManager.save(this.data);
                 this.closeStrategyModal();
                 this.renderTab('strategies');
             }
             this.showToast('Strategy saved!', 'success');
         } catch (error) { this.showToast(error.message, 'error'); }
+        finally { this.isSaving = false; }
     }
     
     editStrategy(rowIndex) {
@@ -1477,6 +1510,7 @@ class CryptoTraderApp {
                 await this.syncData();
             } else {
                 this.data.strategies = this.data.strategies.filter(s => s.rowIndex !== rowIndex);
+                cacheManager.save(this.data);
                 this.renderTab('strategies');
             }
             this.showToast('Deleted!', 'success');
@@ -1578,6 +1612,7 @@ class CryptoTraderApp {
     }
     
     async saveReminderEntry() {
+        if (this.isSaving) return;
         const el = (id) => document.getElementById(id);
         const message = el('remMessage')?.value?.trim();
         if (!message) { this.showToast('Enter a reminder message', 'warning'); return; }
@@ -1594,6 +1629,7 @@ class CryptoTraderApp {
         
         if (rowIndex) data.rowIndex = parseInt(rowIndex);
         
+        this.isSaving = true;
         try {
             if (cryptoAPI.isConfigured()) {
                 if (rowIndex) await cryptoAPI.updateReminder(data);
@@ -1608,11 +1644,13 @@ class CryptoTraderApp {
                     data.rowIndex = Date.now();
                     this.data.reminders.push(data);
                 }
+                cacheManager.save(this.data);
                 this.closeReminderModal();
                 this.renderTab('reminders');
             }
             this.showToast('Reminder saved!', 'success');
         } catch (error) { this.showToast(error.message, 'error'); }
+        finally { this.isSaving = false; }
     }
     
     editReminder(rowIndex) {
@@ -1642,6 +1680,7 @@ class CryptoTraderApp {
                 await this.syncData();
             } else {
                 this.data.reminders = this.data.reminders.filter(r => r.rowIndex !== rowIndex);
+                cacheManager.save(this.data);
                 this.renderTab('reminders');
             }
             this.showToast('Deleted!', 'success');
