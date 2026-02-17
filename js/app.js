@@ -87,6 +87,7 @@ class CryptoTraderApp {
         // Deposit/Withdraw
         document.getElementById('depositBtn')?.addEventListener('click', () => this.handleDeposit());
         document.getElementById('withdrawBtn')?.addEventListener('click', () => this.handleWithdraw());
+        document.getElementById('clearTransactionsBtn')?.addEventListener('click', () => this.clearTransactions());
         
         // Close position screenshot
         document.getElementById('closeScreenshot')?.addEventListener('change', (e) => this.handleCloseScreenshot(e));
@@ -2037,6 +2038,19 @@ class CryptoTraderApp {
                 <span style="color:var(--text-muted)">${t.date}</span>
             </div>
         `).join('');
+    }
+    
+    clearTransactions() {
+        if (!confirm('Clear ALL transaction history? This will reset your balance to $0. Are you sure?')) return;
+        const settings = getSettings();
+        settings.transactions = [];
+        saveSettings(settings);
+        this.data.portfolio = [];
+        cacheManager.save(this.data);
+        this.updatePortfolioBalance();
+        this.renderTransactionHistory();
+        this.renderDashboard();
+        this.showToast('Transaction history cleared. Balance reset.', 'success');
     }
     
     hardRefresh() {
