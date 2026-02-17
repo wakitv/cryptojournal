@@ -94,12 +94,6 @@ class CryptoTraderApp {
         document.getElementById('tradeScreenshot')?.addEventListener('change', (e) => this.handleTradeScreenshot(e));
         document.getElementById('tradeScreenshotRemove')?.addEventListener('click', () => this.removeTradeScreenshot());
         
-        // Deposit/Withdraw
-        // Data management
-        document.getElementById('clearAllDataBtn')?.addEventListener('click', () => this.clearAllData());
-        document.getElementById('clearTradesBtn')?.addEventListener('click', () => this.clearSheetData('Trades'));
-        document.getElementById('clearPositionsBtn')?.addEventListener('click', () => this.clearSheetData('Open Positions'));
-        
         // Close position screenshot
         document.getElementById('closeScreenshot')?.addEventListener('change', (e) => this.handleCloseScreenshot(e));
         document.getElementById('closeExitPrice')?.addEventListener('input', () => this.updateClosePnLPreview());
@@ -1159,7 +1153,8 @@ class CryptoTraderApp {
         try {
             const result = await cryptoAPI.testOKXConnection();
             if (result.success) {
-                this.showToast('✅ OKX connected! ' + (result.message || ''), 'success');
+                this.showToast('✅ OKX connected successfully!', 'success');
+                await this.checkOKXStatus();
             } else {
                 this.showToast('❌ ' + (result.error || 'Connection failed'), 'error');
             }
@@ -1187,14 +1182,16 @@ class CryptoTraderApp {
                 if (s.closedPositions > 0) parts.push(s.closedPositions + ' closed → journal');
                 if (s.newTrades > 0) parts.push(s.newTrades + ' trade' + (s.newTrades > 1 ? 's' : '') + ' imported');
                 
-                const msg = parts.length > 0 ? '📡 OKX: ' + parts.join(', ') : '📡 OKX: Already up to date';
+                const msg = parts.length > 0 ? '📡 OKX: ' + parts.join(', ') : '📡 OKX: Up to date';
                 if (!silent || parts.length > 0) this.showToast(msg, 'success');
+                
+                // Use balance from sync result
+                if (result.balance) {
+                    this.okxBalance = result.balance;
+                }
                 
                 // Refresh data from sheet
                 await this.syncData();
-                // Refresh OKX balance
-                await this.fetchOKXBalance();
-                this.updatePortfolioBalance();
                 this.renderDashboard();
             } else {
                 if (!silent) this.showToast('❌ OKX sync failed: ' + (result.error || 'Unknown error'), 'error');
@@ -2368,53 +2365,6 @@ class CryptoTraderApp {
             }
         } catch (e) { console.warn('OKX balance fetch:', e); }
         return null;
-    }
-    
-    async clearAllData() {
-        if (!confirm('⚠️ This will clear ALL trades, positions, and portfolio data. Start completely fresh?\n\nThis cannot be undone!')) return;
-        
-        try {
-            if (cryptoAPI.isConfigured()) {
-                this.showToast('Clearing all data...', 'info');
-                await cryptoAPI.clearAllData();
-            }
-            
-            this.data.trades = [];
-            this.data.positions = [];
-            this.data.portfolio = [];
-            cacheManager.save(this.data);
-            
-            const settings = getSettings();
-            settings.transactions = [];
-            saveSettings(settings);
-            
-            this.renderDashboard();
-            const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'dashboard';
-            this.renderTab(activeTab);
-            
-            this.showToast('✅ All data cleared! Fresh start.', 'success');
-        } catch (e) { this.showToast('Error: ' + e.message, 'error'); }
-    }
-    
-    async clearSheetData(sheetName) {
-        const label = sheetName === 'Trades' ? 'trade journal' : 'positions';
-        if (!confirm(`Clear all ${label} data?`)) return;
-        
-        try {
-            if (cryptoAPI.isConfigured()) {
-                this.showToast('Clearing...', 'info');
-                await cryptoAPI.clearSheet(sheetName);
-                await this.syncData();
-            } else {
-                if (sheetName === 'Trades') this.data.trades = [];
-                else if (sheetName === 'Open Positions') this.data.positions = [];
-                cacheManager.save(this.data);
-                this.renderDashboard();
-                const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'dashboard';
-                this.renderTab(activeTab);
-            }
-            this.showToast(`✅ ${sheetName} cleared!`, 'success');
-        } catch (e) { this.showToast('Error: ' + e.message, 'error'); }
     }
     
     hardRefresh() {
