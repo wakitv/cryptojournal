@@ -32,6 +32,8 @@ class CryptoTraderApp {
         this.livePrices = {};
         this.lastPriceRefresh = 0;
         this.priceRefreshInterval = null;
+        this.okxSyncInterval = null;
+        this.okxConfigured = false;
         this.strategyRotatorIndex = 0;
         this.strategyRotatorInterval = null;
         this.loadFromCache();
@@ -40,6 +42,7 @@ class CryptoTraderApp {
         this.applyCustomizations();
         this.renderDashboard();
         this.startStrategyRotator();
+        this.checkOKXStatus();
         this.renderReminderTicker();
     }
     
@@ -100,8 +103,13 @@ class CryptoTraderApp {
         // Add buttons (no addTradeBtn - trades only come from closed positions)
         document.getElementById('addPositionBtn')?.addEventListener('click', () => this.openPositionModal());
         document.getElementById('refreshPricesBtn')?.addEventListener('click', () => this.refreshLivePrices());
+        document.getElementById('syncOKXBtn')?.addEventListener('click', () => this.syncOKXTrades());
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
         document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
+        
+        // OKX Settings
+        document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
+        document.getElementById('okxTestBtn')?.addEventListener('click', () => this.testOKXConnection());
         
         // Filter
         document.getElementById('applyFilterBtn')?.addEventListener('click', () => this.applyDateFilter());
@@ -1062,6 +1070,136 @@ class CryptoTraderApp {
         }
     }
     
+    // ===== OKX TRADE SYNC =====
+    
+    async checkOKXStatus() {
+        if (!cryptoAPI.isConfigured()) return;
+        try {
+            const result = await cryptoAPI.getOKXStatus();
+            this.okxConfigured = result.configured;
+            
+            // Show/hide sync button
+            const syncBtn = document.getElementById('syncOKXBtn');
+            if (syncBtn) syncBtn.style.display = result.configured ? 'inline-flex' : 'none';
+            
+            // Update settings badge
+            const badge = document.getElementById('okxStatusBadge');
+            if (badge) {
+                if (result.configured) {
+                    badge.className = 'okx-status-badge connected';
+                    badge.querySelector('.okx-status-text').textContent = 'Connected' + (result.demoMode ? ' (Demo)' : '');
+                } else {
+                    badge.className = 'okx-status-badge disconnected';
+                    badge.querySelector('.okx-status-text').textContent = 'Not Connected';
+                }
+            }
+            
+            // Setup auto-sync if enabled
+            const settings = getSettings();
+            if (result.configured && settings.okxAutoSync) {
+                this.startOKXAutoSync();
+            }
+        } catch (e) { console.warn('OKX status check:', e); }
+    }
+    
+    async saveOKXCredentials() {
+        if (!cryptoAPI.isConfigured()) {
+            this.showToast('Connect Google Sheets API first', 'warning');
+            return;
+        }
+        
+        const apiKey = document.getElementById('okxApiKey')?.value?.trim();
+        const secretKey = document.getElementById('okxSecretKey')?.value?.trim();
+        const passphrase = document.getElementById('okxPassphrase')?.value?.trim();
+        const demoMode = document.getElementById('okxDemoMode')?.checked || false;
+        
+        if (!apiKey || !secretKey || !passphrase) {
+            this.showToast('Fill all 3 fields: API Key, Secret, Passphrase', 'warning');
+            return;
+        }
+        
+        this.showToast('Saving OKX credentials...', 'info');
+        try {
+            const result = await cryptoAPI.setOKXCredentials({ apiKey, secretKey, passphrase, demoMode });
+            if (result.success) {
+                this.showToast('✅ OKX credentials saved securely!', 'success');
+                // Clear input fields for security
+                document.getElementById('okxApiKey').value = '';
+                document.getElementById('okxSecretKey').value = '';
+                document.getElementById('okxPassphrase').value = '';
+                await this.checkOKXStatus();
+            } else {
+                this.showToast('❌ ' + (result.error || 'Failed'), 'error');
+            }
+        } catch (e) { this.showToast('❌ ' + e.message, 'error'); }
+    }
+    
+    async testOKXConnection() {
+        if (!cryptoAPI.isConfigured()) {
+            this.showToast('Connect Google Sheets API first', 'warning');
+            return;
+        }
+        
+        this.showToast('Testing OKX connection...', 'info');
+        try {
+            const result = await cryptoAPI.testOKXConnection();
+            if (result.success) {
+                this.showToast('✅ OKX connected! ' + (result.message || ''), 'success');
+            } else {
+                this.showToast('❌ ' + (result.error || 'Connection failed'), 'error');
+            }
+        } catch (e) { this.showToast('❌ ' + e.message, 'error'); }
+    }
+    
+    async syncOKXTrades(silent = false) {
+        if (!cryptoAPI.isConfigured() || !this.okxConfigured) {
+            if (!silent) this.showToast('OKX not configured. Go to Settings → OKX API', 'warning');
+            return;
+        }
+        
+        const btn = document.getElementById('syncOKXBtn');
+        if (btn) { btn.classList.add('syncing'); btn.textContent = '⏳ Syncing...'; }
+        if (!silent) this.showToast('Syncing trades from OKX...', 'info');
+        
+        try {
+            const result = await cryptoAPI.syncOKXData();
+            
+            if (result.success) {
+                const s = result.summary || {};
+                const parts = [];
+                if (s.newPositions > 0) parts.push(s.newPositions + ' new position' + (s.newPositions > 1 ? 's' : ''));
+                if (s.updatedPositions > 0) parts.push(s.updatedPositions + ' updated');
+                if (s.closedPositions > 0) parts.push(s.closedPositions + ' closed → journal');
+                if (s.newTrades > 0) parts.push(s.newTrades + ' trade' + (s.newTrades > 1 ? 's' : '') + ' imported');
+                
+                const msg = parts.length > 0 ? '📡 OKX: ' + parts.join(', ') : '📡 OKX: Already up to date';
+                if (!silent || parts.length > 0) this.showToast(msg, 'success');
+                
+                // Refresh data from sheet
+                await this.syncData();
+            } else {
+                if (!silent) this.showToast('❌ OKX sync failed: ' + (result.error || 'Unknown error'), 'error');
+            }
+        } catch (e) {
+            if (!silent) this.showToast('❌ OKX sync error: ' + e.message, 'error');
+        } finally {
+            if (btn) { btn.classList.remove('syncing'); btn.textContent = '🔄 Sync OKX'; }
+        }
+    }
+    
+    startOKXAutoSync() {
+        if (this.okxSyncInterval) clearInterval(this.okxSyncInterval);
+        // Auto-sync every 60 seconds
+        this.okxSyncInterval = setInterval(() => this.syncOKXTrades(true), 60000);
+    }
+    
+    stopOKXAutoSync() {
+        if (this.okxSyncInterval) {
+            clearInterval(this.okxSyncInterval);
+            this.okxSyncInterval = null;
+        }
+    }
+    
     renderPositionsTab() {
         const container = document.getElementById('positionsContainer');
         if (!container) return;
@@ -1086,12 +1224,15 @@ class CryptoTraderApp {
             const range = tp - sl || 1;
             const progress = Math.min(Math.max(((current - sl) / range) * 100, 0), 100);
             
+            const isOKX = (p.notes || '').includes('[OKX:');
+            
             return `
                 <div class="position-card ${getValueClass(upnl)}">
                     <div class="position-header">
                         <div class="position-pair">
                             <span style="color:${getPairColor(p.pair)};font-weight:800;font-size:1.1rem">${p.pair}</span>
                             <span class="type-badge ${p.type.toLowerCase()}">${p.type}</span>
+                            ${isOKX ? '<span class="okx-badge">OKX</span>' : ''}
                             <span class="strategy-tag">${p.strategy || ''}</span>
                         </div>
                         <div class="position-pnl">
@@ -1951,6 +2092,13 @@ class CryptoTraderApp {
         // Amount input
         setupCommaInput(document.getElementById('dwAmount'));
         
+        // OKX auto-sync setting
+        const okxAutoSync = document.getElementById('okxAutoSync');
+        if (okxAutoSync) okxAutoSync.checked = settings.okxAutoSync || false;
+        
+        // Check OKX status badge
+        this.checkOKXStatus();
+        
         document.getElementById('settingsOverlay').classList.add('active');
     }
     
@@ -1974,6 +2122,7 @@ class CryptoTraderApp {
         const settings = getSettings();
         settings.webAppUrl = document.getElementById('webAppUrl').value;
         settings.autoSync = document.getElementById('autoSync').checked;
+        settings.okxAutoSync = document.getElementById('okxAutoSync')?.checked || false;
         
         saveSettings(settings);
         cryptoAPI.updateSettings();
@@ -1981,6 +2130,13 @@ class CryptoTraderApp {
         this.applyCustomizations();
         this.closeSettings();
         this.showToast('Settings saved!', 'success');
+        
+        // OKX auto-sync
+        if (settings.okxAutoSync && this.okxConfigured) {
+            this.startOKXAutoSync();
+        } else {
+            this.stopOKXAutoSync();
+        }
         
         if (settings.webAppUrl) this.syncData();
     }
