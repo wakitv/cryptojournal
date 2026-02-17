@@ -375,23 +375,11 @@
             <div class="settings-header"><h3>⚙️ Settings</h3><button class="modal-close" id="settingsClose">✕</button></div>
             <div class="settings-body">
                 <div class="settings-section">
-                    <h4 class="settings-section-title">💰 Deposit & Withdraw</h4>
-                    <div class="deposit-withdraw-row">
-                        <div class="dw-group">
-                            <label>Amount ($)</label>
-                            <input type="text" id="dwAmount" class="form-input amount-input" placeholder="0.00">
-                        </div>
-                        <div class="dw-group">
-                            <label>Notes</label>
-                            <input type="text" id="dwNotes" class="form-input" placeholder="Optional note...">
-                        </div>
-                    </div>
-                    <div class="dw-buttons">
-                        <button class="btn-primary green" id="depositBtn">⬇️ Deposit</button>
-                        <button class="btn-primary red" id="withdrawBtn">⬆️ Withdraw</button>
-                    </div>
-                    <div id="dwHistory" class="dw-history"></div>
-                    <button class="btn-sm secondary" id="clearTransactionsBtn" style="margin-top:8px;width:100%;font-size:0.7rem">🗑 Clear All Transaction History</button>
+                    <h4 class="settings-section-title">🗄️ Data Management</h4>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">Your balance is synced live from OKX. Use the buttons below to manage journal data.</p>
+                    <button class="btn-sm secondary" id="clearAllDataBtn" style="width:100%;margin-bottom:8px">🗑 Clear ALL Data (Fresh Start)</button>
+                    <button class="btn-sm secondary" id="clearTradesBtn" style="width:100%;margin-bottom:8px">📋 Clear Trade Journal Only</button>
+                    <button class="btn-sm secondary" id="clearPositionsBtn" style="width:100%">📊 Clear Positions Only</button>
                 </div>
 
                 <div class="settings-section">
