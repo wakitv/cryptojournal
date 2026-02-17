@@ -1365,8 +1365,17 @@ class CryptoTraderApp {
             return;
         }
         
+        // Compute live stats from trades
+        const closedTrades = (this.data.trades || []).filter(t => t.status === 'CLOSED');
+        
         container.innerHTML = strategies.map(s => {
-            const wr = parseFloat(s.winRate) || 0;
+            // Compute win rate from actual trades
+            const stratTrades = closedTrades.filter(t => t.strategy === s.name);
+            const stratWins = stratTrades.filter(t => (parseFloat(t.pnl) || 0) > 0);
+            const stratLosses = stratTrades.filter(t => (parseFloat(t.pnl) || 0) <= 0);
+            const totalTrades = stratTrades.length;
+            const wr = totalTrades > 0 ? (stratWins.length / totalTrades * 100) : 0;
+            const totalPnl = stratTrades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0);
             const wrColor = wr >= 60 ? 'var(--green)' : wr >= 45 ? 'var(--gold)' : 'var(--red)';
             const indicators = (s.indicators || '').split(',').map(i => i.trim()).filter(i => i);
             
@@ -1381,10 +1390,11 @@ class CryptoTraderApp {
                     <div class="strategy-stats">
                         <div class="strategy-winrate">
                             <div class="wr-bar"><div class="wr-fill" style="width:${wr}%;background:${wrColor}"></div></div>
-                            <span class="wr-text" style="color:${wrColor}">${wr}%</span>
+                            <span class="wr-text" style="color:${wrColor}">${wr.toFixed(1)}%</span>
                         </div>
-                        <span class="strategy-trades">${s.totalTrades || 0} trades</span>
+                        <span class="strategy-trades">${totalTrades} trades (${stratWins.length}W / ${stratLosses.length}L)</span>
                     </div>
+                    ${totalTrades > 0 ? `<div class="strategy-pnl ${totalPnl >= 0 ? 'positive' : 'negative'}">P&L: ${totalPnl >= 0 ? '+' : ''}$${Math.abs(totalPnl).toFixed(2)}</div>` : ''}
                     <div class="strategy-actions">
                         <button class="action-btn edit" onclick="app.editStrategy(${s.rowIndex})">Edit</button>
                         <button class="action-btn delete" onclick="app.deleteStrategy(${s.rowIndex})">Delete</button>
@@ -1779,33 +1789,43 @@ class CryptoTraderApp {
         const reader = new FileReader();
         reader.onload = async (ev) => {
             const dataUrl = ev.target.result;
-            const settings = getSettings();
-            settings.wallpaper = dataUrl;
-            saveSettings(settings);
             
-            // Update preview
+            // Show immediately
             const wp = document.getElementById('wallpaperPreview');
             wp.style.backgroundImage = `url(${dataUrl})`;
             wp.innerHTML = '';
             
-            // Apply immediately
-            this.applyCustomizations();
+            // Apply preview immediately
+            const wallpaperEl = document.getElementById('dashboardWallpaper');
+            if (wallpaperEl) wallpaperEl.style.backgroundImage = `url(${dataUrl})`;
             this.showToast('Wallpaper updated!', 'success');
             
-            // Upload to Google Drive
+            // Upload to Google Drive and save URL
             if (cryptoAPI.isConfigured()) {
                 try {
                     const base64 = dataUrl.split(',')[1];
-                    await cryptoAPI.uploadScreenshot({
+                    const result = await cryptoAPI.uploadScreenshot({
                         base64Data: base64,
                         mimeType: file.type,
                         fileName: `wallpaper_${Date.now()}.${file.name.split('.').pop()}`
                     });
-                    this.showToast('Wallpaper saved to Drive!', 'success');
+                    const driveUrl = result.downloadUrl || result.fileUrl || '';
+                    if (driveUrl) {
+                        const settings = getSettings();
+                        settings.wallpaper = driveUrl;
+                        saveSettings(settings);
+                        this.showToast('Wallpaper saved to Drive!', 'success');
+                        return;
+                    }
                 } catch (err) {
-                    console.warn('Wallpaper Drive upload failed:', err);
+                    console.warn('Wallpaper Drive upload failed, saving locally:', err);
                 }
             }
+            
+            // Fallback: save base64 locally
+            const settings = getSettings();
+            settings.wallpaper = dataUrl;
+            saveSettings(settings);
         };
         reader.readAsDataURL(file);
     }
@@ -1831,28 +1851,39 @@ class CryptoTraderApp {
         const reader = new FileReader();
         reader.onload = async (ev) => {
             const dataUrl = ev.target.result;
-            const settings = getSettings();
-            settings.customIcon = dataUrl;
-            saveSettings(settings);
             
+            // Show immediately
             document.getElementById('iconPreview').src = dataUrl;
-            this.applyCustomizations();
+            const headerLogo = document.querySelector('.logo-icon');
+            if (headerLogo) headerLogo.src = dataUrl;
             this.showToast('Icon updated!', 'success');
             
-            // Upload to Google Drive
+            // Upload to Drive and save URL
             if (cryptoAPI.isConfigured()) {
                 try {
                     const base64 = dataUrl.split(',')[1];
-                    await cryptoAPI.uploadScreenshot({
+                    const result = await cryptoAPI.uploadScreenshot({
                         base64Data: base64,
                         mimeType: file.type,
                         fileName: `app_icon_${Date.now()}.${file.name.split('.').pop()}`
                     });
-                    this.showToast('Icon saved to Drive!', 'success');
+                    const driveUrl = result.downloadUrl || result.fileUrl || '';
+                    if (driveUrl) {
+                        const settings = getSettings();
+                        settings.customIcon = driveUrl;
+                        saveSettings(settings);
+                        this.showToast('Icon saved to Drive!', 'success');
+                        return;
+                    }
                 } catch (err) {
-                    console.warn('Icon Drive upload failed:', err);
+                    console.warn('Icon Drive upload failed, saving locally:', err);
                 }
             }
+            
+            // Fallback: save base64 locally
+            const settings = getSettings();
+            settings.customIcon = dataUrl;
+            saveSettings(settings);
         };
         reader.readAsDataURL(file);
     }
