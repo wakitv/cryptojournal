@@ -34,6 +34,9 @@ class CryptoTraderApp {
         this.priceRefreshInterval = null;
         this.okxSyncInterval = null;
         this.okxConfigured = false;
+        this.okxBalance = 0;
+        this.okxBalanceDetails = [];
+        this.okxUPL = 0;
         this.strategyRotatorIndex = 0;
         this.strategyRotatorInterval = null;
         this.loadFromCache();
@@ -92,9 +95,10 @@ class CryptoTraderApp {
         document.getElementById('tradeScreenshotRemove')?.addEventListener('click', () => this.removeTradeScreenshot());
         
         // Deposit/Withdraw
-        document.getElementById('depositBtn')?.addEventListener('click', () => this.handleDeposit());
-        document.getElementById('withdrawBtn')?.addEventListener('click', () => this.handleWithdraw());
-        document.getElementById('clearTransactionsBtn')?.addEventListener('click', () => this.clearTransactions());
+        // Data management
+        document.getElementById('clearAllDataBtn')?.addEventListener('click', () => this.clearAllData());
+        document.getElementById('clearTradesBtn')?.addEventListener('click', () => this.clearSheetData('Trades'));
+        document.getElementById('clearPositionsBtn')?.addEventListener('click', () => this.clearSheetData('Open Positions'));
         
         // Close position screenshot
         document.getElementById('closeScreenshot')?.addEventListener('change', (e) => this.handleCloseScreenshot(e));
@@ -286,15 +290,19 @@ class CryptoTraderApp {
     // ===== PORTFOLIO BALANCE UPDATE =====
     
     getComputedBalance() {
-        const settings = getSettings();
-        const totalDeposits = (settings.transactions || []).filter(t => t.type === 'DEPOSIT').reduce((s, t) => s + parseFloat(t.amount), 0);
-        const totalWithdrawals = (settings.transactions || []).filter(t => t.type === 'WITHDRAW').reduce((s, t) => s + parseFloat(t.amount), 0);
-        const netDeposited = totalDeposits - totalWithdrawals;
+        // Primary: use live OKX balance
+        if (this.okxBalance && this.okxBalance > 0) {
+            return Math.round(this.okxBalance * 100) / 100;
+        }
         
-        const closed = (this.data.trades || []).filter(t => t.status === 'CLOSED');
-        const totalPnL = closed.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0);
+        // Fallback: last known portfolio balance from sheet
+        const portfolio = this.data.portfolio || [];
+        if (portfolio.length > 0) {
+            const last = portfolio[portfolio.length - 1];
+            return Math.round((parseFloat(last.balance) || 0) * 100) / 100;
+        }
         
-        return Math.round((netDeposited + totalPnL) * 100) / 100;
+        return 0;
     }
     
     updatePortfolioBalance() {
@@ -1094,6 +1102,13 @@ class CryptoTraderApp {
                 }
             }
             
+            // Fetch live balance if connected
+            if (result.configured) {
+                await this.fetchOKXBalance();
+                this.updatePortfolioBalance();
+                this.renderDashboard();
+            }
+            
             // Setup auto-sync if enabled
             const settings = getSettings();
             if (result.configured && settings.okxAutoSync) {
@@ -1177,6 +1192,10 @@ class CryptoTraderApp {
                 
                 // Refresh data from sheet
                 await this.syncData();
+                // Refresh OKX balance
+                await this.fetchOKXBalance();
+                this.updatePortfolioBalance();
+                this.renderDashboard();
             } else {
                 if (!silent) this.showToast('❌ OKX sync failed: ' + (result.error || 'Unknown error'), 'error');
             }
@@ -2083,14 +2102,8 @@ class CryptoTraderApp {
         const iconEl = document.getElementById('iconPreview');
         iconEl.src = settings.customIcon || 'assets/logo.png';
         
-        // Deposit/Withdraw history
-        this.renderTransactionHistory();
-        
         // Custom pairs list
         this.renderCustomPairs();
-        
-        // Amount input
-        setupCommaInput(document.getElementById('dwAmount'));
         
         // OKX auto-sync setting
         const okxAutoSync = document.getElementById('okxAutoSync');
@@ -2341,107 +2354,67 @@ class CryptoTraderApp {
         if (headerLogo) headerLogo.src = iconSrc;
     }
     
-    // ===== DEPOSIT / WITHDRAW =====
+    // ===== OKX BALANCE + DATA MANAGEMENT =====
     
-    handleDeposit() {
-        const amount = parseFormattedNumber(document.getElementById('dwAmount').value);
-        if (!amount || amount <= 0) { this.showToast('Enter a valid amount', 'warning'); return; }
-        
-        const notes = document.getElementById('dwNotes').value.trim();
-        const settings = getSettings();
-        if (!settings.transactions) settings.transactions = [];
-        
-        settings.transactions.push({
-            type: 'DEPOSIT',
-            amount: amount,
-            date: getTodayStr(),
-            time: new Date().toLocaleTimeString(),
-            notes: notes
-        });
-        saveSettings(settings);
-        
-        // Update portfolio balance
-        this.updatePortfolioBalance();
-        
-        // Clear inputs
-        document.getElementById('dwAmount').value = '';
-        document.getElementById('dwNotes').value = '';
-        
-        this.renderTransactionHistory();
-        this.renderDashboard();
-        this.showToast(`Deposited +$${amount.toFixed(2)}`, 'success');
+    async fetchOKXBalance() {
+        if (!cryptoAPI.isConfigured() || !this.okxConfigured) return null;
+        try {
+            const result = await cryptoAPI.getOKXBalance();
+            if (result.success) {
+                this.okxBalance = result.totalEq || 0;
+                this.okxBalanceDetails = result.details || [];
+                this.okxUPL = result.upl || 0;
+                return result;
+            }
+        } catch (e) { console.warn('OKX balance fetch:', e); }
+        return null;
     }
     
-    handleWithdraw() {
-        const amount = parseFormattedNumber(document.getElementById('dwAmount').value);
-        if (!amount || amount <= 0) { this.showToast('Enter a valid amount', 'warning'); return; }
+    async clearAllData() {
+        if (!confirm('⚠️ This will clear ALL trades, positions, and portfolio data. Start completely fresh?\n\nThis cannot be undone!')) return;
         
-        // Check if balance is sufficient
-        const stats = this.getStats();
-        if (amount > stats.currentBalance) {
-            this.showToast(`Insufficient balance! Current: $${stats.currentBalance.toFixed(2)}`, 'error');
-            return;
-        }
-        
-        const notes = document.getElementById('dwNotes').value.trim();
-        const settings = getSettings();
-        if (!settings.transactions) settings.transactions = [];
-        
-        settings.transactions.push({
-            type: 'WITHDRAW',
-            amount: amount,
-            date: getTodayStr(),
-            time: new Date().toLocaleTimeString(),
-            notes: notes
-        });
-        saveSettings(settings);
-        
-        // Update portfolio balance (negative)
-        this.updatePortfolioBalance();
-        
-        // Clear inputs
-        document.getElementById('dwAmount').value = '';
-        document.getElementById('dwNotes').value = '';
-        
-        this.renderTransactionHistory();
-        this.renderDashboard();
-        this.showToast(`Withdrawn -$${amount.toFixed(2)}`, 'info');
+        try {
+            if (cryptoAPI.isConfigured()) {
+                this.showToast('Clearing all data...', 'info');
+                await cryptoAPI.clearAllData();
+            }
+            
+            this.data.trades = [];
+            this.data.positions = [];
+            this.data.portfolio = [];
+            cacheManager.save(this.data);
+            
+            const settings = getSettings();
+            settings.transactions = [];
+            saveSettings(settings);
+            
+            this.renderDashboard();
+            const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'dashboard';
+            this.renderTab(activeTab);
+            
+            this.showToast('✅ All data cleared! Fresh start.', 'success');
+        } catch (e) { this.showToast('Error: ' + e.message, 'error'); }
     }
     
-    renderTransactionHistory() {
-        const container = document.getElementById('dwHistory');
-        if (!container) return;
+    async clearSheetData(sheetName) {
+        const label = sheetName === 'Trades' ? 'trade journal' : 'positions';
+        if (!confirm(`Clear all ${label} data?`)) return;
         
-        const settings = getSettings();
-        const transactions = settings.transactions || [];
-        
-        if (transactions.length === 0) {
-            container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:8px;font-size:0.75rem;">No transactions yet</div>';
-            return;
-        }
-        
-        // Show last 10 in reverse order
-        const recent = [...transactions].reverse().slice(0, 10);
-        container.innerHTML = recent.map(t => `
-            <div class="dw-history-item">
-                <span class="dw-type ${t.type.toLowerCase()}">${t.type === 'DEPOSIT' ? '⬇️ Deposit' : '⬆️ Withdraw'}</span>
-                <span>${t.type === 'DEPOSIT' ? '+' : '-'}$${parseFloat(t.amount).toFixed(2)}</span>
-                <span style="color:var(--text-muted)">${t.date}</span>
-            </div>
-        `).join('');
-    }
-    
-    clearTransactions() {
-        if (!confirm('Clear ALL transaction history? This will reset your balance to $0. Are you sure?')) return;
-        const settings = getSettings();
-        settings.transactions = [];
-        saveSettings(settings);
-        this.data.portfolio = [];
-        cacheManager.save(this.data);
-        this.updatePortfolioBalance();
-        this.renderTransactionHistory();
-        this.renderDashboard();
-        this.showToast('Transaction history cleared. Balance reset.', 'success');
+        try {
+            if (cryptoAPI.isConfigured()) {
+                this.showToast('Clearing...', 'info');
+                await cryptoAPI.clearSheet(sheetName);
+                await this.syncData();
+            } else {
+                if (sheetName === 'Trades') this.data.trades = [];
+                else if (sheetName === 'Open Positions') this.data.positions = [];
+                cacheManager.save(this.data);
+                this.renderDashboard();
+                const activeTab = document.querySelector('.nav-item.active')?.dataset.tab || 'dashboard';
+                this.renderTab(activeTab);
+            }
+            this.showToast(`✅ ${sheetName} cleared!`, 'success');
+        } catch (e) { this.showToast('Error: ' + e.message, 'error'); }
     }
     
     hardRefresh() {
