@@ -383,6 +383,9 @@ body {
 .wr-fill { height: 100%; border-radius: 3px; }
 .wr-text { font-size: 0.85rem; font-weight: 800; font-family: var(--font-mono); }
 .strategy-trades { font-size: 0.75rem; color: var(--text-muted); }
+.strategy-pnl { font-size: 0.82rem; font-weight: 700; font-family: var(--font-mono); margin-bottom: 12px; padding: 6px 10px; border-radius: 8px; }
+.strategy-pnl.positive { color: var(--green); background: rgba(0,255,136,0.06); }
+.strategy-pnl.negative { color: var(--red); background: rgba(255,68,68,0.06); }
 .strategy-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
 
 /* ===== REMINDERS ===== */
@@ -772,6 +775,47 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     .wallpaper-title { font-size: 1.2rem; }
     .deposit-withdraw-row { grid-template-columns: 1fr; }
     .icon-preview-row { flex-direction: column; text-align: center; }
+    
+    /* Mobile touch targets */
+    .action-btn { min-height: 36px; min-width: 36px; padding: 6px 12px; }
+    .btn-sm { min-height: 36px; padding: 6px 14px; }
+    .btn-primary, .btn-secondary { min-height: 44px; font-size: 0.85rem; }
+    
+    /* Modal scroll on small screens */
+    .modal { max-height: 90vh; display: flex; flex-direction: column; }
+    .modal-body { overflow-y: auto; max-height: 65vh; -webkit-overflow-scrolling: touch; }
+    
+    /* Trades table horizontal scroll */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .trades-table { min-width: 650px; }
+    
+    /* Strategy card mobile */
+    .strategy-card { padding: 14px; }
+    .strategy-name { font-size: 0.95rem; }
+    .strategy-stats { flex-direction: column; align-items: flex-start; gap: 6px; }
+    
+    /* Duration toggle */
+    .duration-toggle { gap: 6px; }
+    .dur-btn { padding: 8px; font-size: 0.8rem; }
+    
+    /* Pair tags scroll */
+    .pairs-tag-list { max-height: 200px; overflow-y: auto; }
+    
+    /* Trade screenshot */
+    .trade-screenshot-row { flex-direction: column; }
+    .trade-ss-thumb { max-height: 60px; }
+    
+    /* Position cards */
+    .position-card { padding: 14px; }
+    .position-header { flex-direction: column; gap: 8px; }
+    
+    /* Close position modal */
+    .close-pos-info { font-size: 0.85rem; }
+    .screenshot-upload-area { padding: 12px; }
+    
+    /* Settings */
+    .settings-body { padding: 12px; }
+    .settings-section { padding: 14px 0; }
 }
 
 /* ===== CUSTOM PAIRS ===== */
