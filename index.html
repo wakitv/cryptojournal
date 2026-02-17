@@ -1,1077 +1,452 @@
-/* ===================================
-   CryptoTrader Pro v2 - Dark Trading Theme
-   =================================== */
-
-:root {
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #10101a;
-    --bg-card: #151520;
-    --bg-card-hover: #1c1c2c;
-    --bg-input: #0c0c14;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CryptoTrader">
+    <meta name="description" content="Crypto Trading Journal & Analytics - CryptoTrader Pro v2">
     
-    --green: #00ff88;
-    --green-dark: #00cc6a;
-    --green-dim: rgba(0,255,136,0.15);
-    --red: #ff4757;
-    --red-dark: #cc3a47;
-    --red-dim: rgba(255,71,87,0.15);
-    --blue: #4facfe;
-    --blue-dim: rgba(79,172,254,0.15);
-    --purple: #a855f7;
-    --purple-dim: rgba(168,85,247,0.15);
-    --gold: #ffc107;
-    --gold-dim: rgba(255,193,7,0.15);
-    --cyan: #00d4ff;
-    --cyan-dim: rgba(0,212,255,0.15);
+    <title>CryptoTrader Pro | Trading Journal v2</title>
     
-    --text-primary: #e8e8f0;
-    --text-secondary: #a0a0b5;
-    --text-muted: #606075;
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
     
-    --border: rgba(255,255,255,0.06);
-    --border-strong: rgba(255,255,255,0.12);
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    --header-height: 60px;
-    --sidebar-width: 250px;
-    --bottom-nav-height: 66px;
-    
-    --font-display: 'Bebas Neue', sans-serif;
-    --font-body: 'Outfit', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-    
-    --radius: 14px;
-    --radius-sm: 10px;
-}
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+</head>
+<body>
+    <div id="app" class="app">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-btn" id="menuBtn"><span></span><span></span><span></span></button>
+                <h1 class="logo"><img src="assets/logo.png" alt="CryptoTrader" class="logo-icon"> CryptoTrader<span class="version">Pro</span></h1>
+            </div>
+            <div class="header-ticker" id="headerTicker">
+                <div class="ticker-track" id="tickerTrack">
+                    <span class="ticker-item">No reminders set</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="sync-status" id="syncStatus">
+                    <span class="sync-dot"></span>
+                    <span class="sync-text">Ready</span>
+                </div>
+                <button class="refresh-btn" id="refreshBtn" title="Sync Data">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                </button>
+            </div>
+        </header>
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; scroll-behavior: smooth; }
-body {
-    font-family: var(--font-body);
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    min-height: 100vh;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-}
+        <nav class="sidebar" id="sidebar">
+            <ul class="nav-menu">
+                <li class="nav-item active" data-tab="dashboard"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></li>
+                <li class="nav-item" data-tab="trades"><span class="nav-icon">📝</span><span class="nav-text">Trade Journal</span></li>
+                <li class="nav-item" data-tab="positions"><span class="nav-icon">◎</span><span class="nav-text">Open Positions</span></li>
+                <li class="nav-item" data-tab="strategies"><span class="nav-icon">⚡</span><span class="nav-text">Strategies</span></li>
+                <li class="nav-item" data-tab="reminders"><span class="nav-icon">🔔</span><span class="nav-text">Reminders</span></li>
+            </ul>
+            <div class="sidebar-strategy-rotator" id="sidebarStrategyRotator">
+                <div class="rotator-label">⚡ Strategy Tip</div>
+                <div class="rotator-content" id="rotatorContent">
+                    <span class="rotator-text">No strategies yet</span>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <button class="settings-btn" id="settingsBtn"><span class="nav-icon">⚙️</span><span class="nav-text">Settings</span></button>
+            </div>
+        </nav>
 
-/* ===== HEADER ===== */
-.header {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: var(--header-height); z-index: 90;
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0 24px;
-    background: rgba(10,10,15,0.85); backdrop-filter: blur(24px);
-    border-bottom: 1px solid var(--border);
-}
-.header-left { display: flex; align-items: center; gap: 14px; }
-.menu-btn {
-    display: none; flex-direction: column; gap: 5px;
-    background: none; border: none; cursor: pointer; padding: 4px;
-}
-.menu-btn span { display: block; width: 22px; height: 2px; background: var(--text-secondary); border-radius: 2px; transition: 0.3s; }
-.logo { font-family: var(--font-body); font-size: 1.15rem; font-weight: 800; color: var(--green); letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
-.logo-icon { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; }
-.logo .version { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); vertical-align: super; margin-left: 3px; }
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-.header-right { display: flex; align-items: center; gap: 14px; }
-.sync-status { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; background: rgba(255,255,255,0.04); font-size: 0.72rem; color: var(--text-muted); }
-.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-.sync-status.syncing .sync-dot { background: var(--gold); animation: pulse 1s ease infinite; }
-.sync-status.error .sync-dot { background: var(--red); }
+        <main class="main-content">
 
-.refresh-btn {
-    background: none; border: 1px solid var(--border); border-radius: 10px;
-    width: 38px; height: 38px; cursor: pointer; color: var(--text-secondary);
-    display: flex; align-items: center; justify-content: center; transition: 0.2s;
-}
-.refresh-btn svg { width: 16px; height: 16px; }
-.refresh-btn:hover { border-color: var(--green); color: var(--green); }
-.refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+            <!-- ==================== DASHBOARD + ANALYTICS ==================== -->
+            <section class="tab-content active" id="tab-dashboard">
+                <div class="dashboard-wallpaper" id="dashboardWallpaper">
+                    <div class="wallpaper-overlay"></div>
+                </div>
 
-/* ===== HEADER TICKER ===== */
-.header-ticker {
-    flex: 1;
-    overflow: hidden;
-    margin: 0 16px;
-    position: relative;
-    height: 28px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.04);
-}
-.header-ticker::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 32px;
-    background: linear-gradient(to right, rgba(10,10,15,0.95), transparent);
-    z-index: 1;
-    border-radius: 14px 0 0 14px;
-}
-.ticker-track {
-    display: flex;
-    white-space: nowrap;
-    animation: tickerScroll 45s linear infinite;
-    padding-left: 36px;
-    line-height: 28px;
-}
-.ticker-item {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    padding-right: 60px;
-    display: inline-block;
-}
-.ticker-item .ticker-type {
-    color: var(--gold);
-    font-weight: 600;
-    margin-right: 6px;
-}
-.ticker-item .ticker-pair {
-    color: var(--green);
-    font-weight: 600;
-    margin-right: 4px;
-}
-@keyframes tickerScroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-}
+                <div class="stats-grid six">
+                    <div class="stat-card gold"><div class="stat-icon">💵</div><div class="stat-info"><span class="stat-label">Balance</span><span class="stat-value" id="currentBalance">$0</span></div></div>
+                    <div class="stat-card green"><div class="stat-icon">💰</div><div class="stat-info"><span class="stat-label">Total P&L</span><span class="stat-value" id="totalPnL">$0</span></div></div>
+                    <div class="stat-card cyan"><div class="stat-icon">📅</div><div class="stat-info"><span class="stat-label">Today's P&L</span><span class="stat-value" id="todayPnL">$0</span></div></div>
+                    <div class="stat-card gold"><div class="stat-icon">🎯</div><div class="stat-info"><span class="stat-label">Win Rate</span><span class="stat-value" id="winRate">0%</span></div></div>
+                    <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-info"><span class="stat-label">Total Trades</span><span class="stat-value" id="totalTrades">0</span></div></div>
+                    <div class="stat-card purple"><div class="stat-icon">◎</div><div class="stat-info"><span class="stat-label">Open Positions</span><span class="stat-value" id="openPositions">0</span></div></div>
+                </div>
 
-/* ===== SIDEBAR ===== */
-.sidebar {
-    position: fixed; left: 0; top: var(--header-height); bottom: 0;
-    width: var(--sidebar-width); background: var(--bg-secondary);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; z-index: 80; overflow-y: auto;
-}
-.nav-menu { list-style: none; padding: 20px 10px 0; margin: 0; flex: 1; }
-.nav-item {
-    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-    border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 4px;
-    color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; transition: 0.2s;
-}
-.nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
-.nav-item.active { background: var(--green-dim); color: var(--green); font-weight: 700; }
-.nav-icon { font-size: 1.05rem; }
+                <div class="analytics-grid">
+                    <div class="analytics-card"><span class="analytics-label">Profit Factor</span><span class="analytics-value" id="profitFactor">0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Avg Win</span><span class="analytics-value positive" id="aAvgWin">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Avg Loss</span><span class="analytics-value negative" id="aAvgLoss">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Best Trade</span><span class="analytics-value positive" id="aBestTrade">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Worst Trade</span><span class="analytics-value negative" id="aWorstTrade">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Unrealized P&L</span><span class="analytics-value" id="unrealizedPnL">$0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Win Streak</span><span class="analytics-value" id="winStreak">0</span></div>
+                    <div class="analytics-card"><span class="analytics-label">Loss Streak</span><span class="analytics-value" id="lossStreak">0</span></div>
+                </div>
 
-/* ===== SIDEBAR STRATEGY ROTATOR ===== */
-.sidebar-strategy-rotator {
-    margin: 0 10px 8px;
-    padding: 12px;
-    background: linear-gradient(135deg, rgba(0,255,136,0.04), rgba(0,200,255,0.03));
-    border: 1px solid rgba(0,255,136,0.08);
-    border-radius: var(--radius-sm);
-    min-height: 70px;
-}
-.rotator-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
-}
-.rotator-content {
-    position: relative;
-    overflow: hidden;
-    min-height: 36px;
-}
-.rotator-text {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    line-height: 1.35;
-    display: block;
-    animation: rotatorFadeIn 0.5s ease;
-}
-.rotator-text .rotator-name {
-    font-weight: 700;
-    color: var(--text-primary);
-    display: block;
-    margin-bottom: 2px;
-    font-size: 0.82rem;
-}
-.rotator-text .rotator-desc {
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-.rotator-text .rotator-tf {
-    font-size: 0.65rem;
-    color: var(--gold);
-    margin-top: 3px;
-    display: inline-block;
-}
-@keyframes rotatorFadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+                <div id="winLossBar" class="wl-container"></div>
 
-.sidebar-footer { padding: 12px 10px; border-top: 1px solid var(--border); }
-.settings-btn {
-    display: flex; align-items: center; gap: 12px; padding: 12px 16px; width: 100%;
-    background: none; border: none; cursor: pointer; color: var(--text-secondary);
-    font-family: var(--font-body); font-size: 0.85rem; border-radius: var(--radius-sm); transition: 0.2s;
-}
-.settings-btn:hover { background: rgba(255,255,255,0.04); }
-.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 79; }
+                <div class="dashboard-grid">
+                    <div class="chart-card">
+                        <div class="chart-header"><h3>Portfolio Growth</h3></div>
+                        <div class="chart-body"><canvas id="portfolioChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header"><h3>Cumulative P&L</h3></div>
+                        <div class="chart-body"><canvas id="pnlChart"></canvas></div>
+                    </div>
+                </div>
 
-/* ===== MAIN CONTENT ===== */
-.main-content {
-    margin-left: var(--sidebar-width);
-    padding: 24px;
-    padding-top: calc(var(--header-height) + 24px);
-    min-height: 100vh;
-}
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>P&L by Pair</h3></div>
+                        <div id="pairBreakdown" class="breakdown-list"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>P&L by Strategy</h3></div>
+                        <div id="strategyBreakdown" class="breakdown-list"></div>
+                    </div>
+                </div>
 
-.tab-content { display: none; animation: fadeIn 0.25s ease; }
-.tab-content.active { display: block; }
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>Recent Trades</h3><button class="btn-link" onclick="document.querySelector('[data-tab=trades]').click()">View All →</button></div>
+                        <div id="recentTrades" class="recent-list"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>Active Reminders</h3><button class="btn-link" onclick="document.querySelector('[data-tab=reminders]').click()">View All →</button></div>
+                        <div id="activeReminders" class="reminders-list"></div>
+                    </div>
+                </div>
+            </section>
 
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-.page-title { font-size: 1.4rem; font-weight: 800; }
-.page-subtitle { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+            <!-- ==================== TRADES ==================== -->
+            <section class="tab-content" id="tab-trades">
+                <div class="page-header">
+                    <h2 class="page-title">Trade Journal</h2>
+                </div>
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <input type="text" id="filterStartDate" class="filter-input" placeholder="Start">
+                        <span class="filter-separator">to</span>
+                        <input type="text" id="filterEndDate" class="filter-input" placeholder="End">
+                        <button class="btn-sm" id="applyFilterBtn">Apply</button>
+                        <button class="btn-sm secondary" id="resetFilterBtn">Reset</button>
+                    </div>
+                    <div class="filter-summary">
+                        <span>P&L: <strong id="filterPnL" class="summary-value">$0</strong></span>
+                        <span>W: <strong id="filterWins" class="positive">0</strong></span>
+                        <span>L: <strong id="filterLosses" class="negative">0</strong></span>
+                        <span>Total: <strong id="filterTotal">0</strong></span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th>Date</th><th>Pair</th><th>Type</th><th>Strategy</th>
+                            <th>Entry</th><th>Exit</th>
+                            <th>P&L ($)</th><th>Duration</th><th>📸</th><th>Actions</th>
+                        </tr></thead>
+                        <tbody id="tradesTableBody"><tr><td colspan="10" class="empty-cell">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
 
-/* ===== STAT CARDS ===== */
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-.stats-grid.six { grid-template-columns: repeat(3, 1fr); }
-.stat-card {
-    background: var(--bg-card); border-radius: var(--radius); padding: 18px;
-    border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;
-    transition: 0.2s; position: relative; overflow: hidden;
-}
-.stat-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
-.stat-card.green { border-left: 3px solid var(--green); }
-.stat-card.gold { border-left: 3px solid var(--gold); }
-.stat-card.blue { border-left: 3px solid var(--blue); }
-.stat-card.purple { border-left: 3px solid var(--purple); }
-.stat-card.cyan { border-left: 3px solid var(--cyan); }
-.stat-icon { font-size: 1.5rem; }
-.stat-info { display: flex; flex-direction: column; gap: 2px; }
-.stat-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-.stat-value { font-size: 1.2rem; font-weight: 800; font-family: var(--font-mono); }
+            <!-- ==================== POSITIONS ==================== -->
+            <section class="tab-content" id="tab-positions">
+                <div class="page-header">
+                    <h2 class="page-title">Open Positions</h2>
+                    <div class="page-header-actions">
+                        <div id="livePriceStatus" class="live-price-status" style="display:none">
+                            <span class="live-dot"></span>
+                            <span class="live-text">Live</span>
+                        </div>
+                        <button class="btn-sm live-btn" id="refreshPricesBtn" title="Fetch live prices from OKX">📡 Prices</button>
+                        <button class="btn-sm okx-sync-btn" id="syncOKXBtn" title="Sync trades from OKX" style="display:none">🔄 Sync OKX</button>
+                        <button class="btn-primary" id="addPositionBtn">+ New Position</button>
+                    </div>
+                </div>
+                <div id="positionsContainer" class="positions-grid"></div>
+            </section>
 
-/* ===== ANALYTICS MINI CARDS ===== */
-.analytics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-.analytics-card { background: var(--bg-card); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border); text-align: center; }
-.analytics-label { display: block; font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-.analytics-value { font-size: 1.15rem; font-weight: 800; font-family: var(--font-mono); }
+            <!-- ==================== STRATEGIES ==================== -->
+            <section class="tab-content" id="tab-strategies">
+                <div class="page-header">
+                    <h2 class="page-title">Trading Strategies</h2>
+                    <button class="btn-primary" id="addStrategyBtn">+ New Strategy</button>
+                </div>
+                <div id="strategiesContainer" class="strategies-grid"></div>
+            </section>
 
-/* ===== WIN/LOSS BAR ===== */
-.wl-container { margin-bottom: 20px; }
-.wl-bar { display: flex; height: 36px; border-radius: var(--radius-sm); overflow: hidden; }
-.wl-win { background: var(--green); color: var(--bg-primary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; font-family: var(--font-mono); min-width: 40px; }
-.wl-loss { background: var(--red); color: var(--bg-primary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; font-family: var(--font-mono); min-width: 40px; }
+            <!-- ==================== REMINDERS ==================== -->
+            <section class="tab-content" id="tab-reminders">
+                <div class="page-header">
+                    <h2 class="page-title">Reminders & Alerts</h2>
+                    <button class="btn-primary blue" id="addReminderBtn">+ New Reminder</button>
+                </div>
+                <div id="remindersContainer"></div>
+            </section>
+        </main>
 
-/* ===== CHARTS & CARDS ===== */
-.chart-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
-.chart-header { padding: 16px 20px 0; }
-.chart-header h3 { font-size: 0.9rem; font-weight: 700; }
-.chart-body { padding: 10px 16px 16px; height: 280px; }
+        <nav class="bottom-nav">
+            <button class="bottom-nav-item active" data-tab="dashboard"><span class="bnav-icon">📊</span><span class="bnav-text">Home</span></button>
+            <button class="bottom-nav-item" data-tab="trades"><span class="bnav-icon">📝</span><span class="bnav-text">Trades</span></button>
+            <button class="bottom-nav-item" data-tab="positions"><span class="bnav-icon">◎</span><span class="bnav-text">Positions</span></button>
+            <button class="bottom-nav-item" data-tab="strategies"><span class="bnav-icon">⚡</span><span class="bnav-text">Strategy</span></button>
+            <button class="bottom-nav-item" data-tab="reminders"><span class="bnav-icon">🔔</span><span class="bnav-text">Alerts</span></button>
+        </nav>
+    </div>
 
-.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.card-header h3 { font-size: 0.9rem; font-weight: 700; }
-.btn-link { background: none; border: none; color: var(--green); font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
+    <!-- MODALS -->
+    <div class="modal-overlay" id="tradeModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title" id="tradeModalTitle">Edit Trade</h3><button class="modal-close" onclick="app.closeTradeModal()">✕</button></div>
+            <div class="modal-body"><form id="tradeForm" onsubmit="return false;">
+                <input type="hidden" id="tradeRowIndex">
+                <div class="form-row">
+                    <div class="form-group"><label>Date *</label><input type="text" id="tradeDate" class="form-input"></div>
+                    <div class="form-group"><label>Pair *</label><select id="tradePair" class="form-input"><option value="">Select pair</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Direction</label><select id="tradeType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select></div>
+                    <div class="form-group"><label>Strategy</label><select id="tradeStrategy" class="form-input"><option value="">Select strategy</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Entry Price *</label><input type="text" id="tradeEntry" class="form-input amount-input" placeholder="0.00"></div>
+                    <div class="form-group"><label>Exit Price</label><input type="text" id="tradeExit" class="form-input amount-input" placeholder="0.00"></div>
+                </div>
+                <div class="form-row three">
+                    <div class="form-group"><label>Quantity</label><input type="text" id="tradeQty" class="form-input amount-input" placeholder="1"></div>
+                    <div class="form-group"><label>Stop Loss</label><input type="text" id="tradeSL" class="form-input amount-input" placeholder="0.00"></div>
+                    <div class="form-group"><label>Take Profit</label><input type="text" id="tradeTP" class="form-input amount-input" placeholder="0.00"></div>
+                </div>
+                <div class="form-group">
+                    <label>Duration</label>
+                    <input type="text" id="tradeDuration" class="form-input" placeholder="e.g. 2d 5h 30m">
+                </div>
+                <div class="form-group">
+                    <label>📸 Screenshot (optional)</label>
+                    <div class="trade-screenshot-row">
+                        <div class="trade-screenshot-preview" id="tradeScreenshotPreview"></div>
+                        <div class="trade-screenshot-btns">
+                            <label class="btn-sm upload-label" for="tradeScreenshot">📷 Upload</label>
+                            <input type="file" id="tradeScreenshot" accept="image/*" style="display:none">
+                            <button type="button" class="btn-sm secondary" id="tradeScreenshotRemove" style="display:none">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea id="tradeNotes" class="form-input" rows="3" placeholder="Trade notes..."></textarea></div>
+            </form></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeTradeModal()">Cancel</button><button class="btn-primary" onclick="app.saveTradeEntry()">Save Trade</button></div>
+        </div>
+    </div>
 
-/* ===== BREAKDOWNS ===== */
-.breakdown-list { display: flex; flex-direction: column; gap: 8px; }
-.pair-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); }
-.pair-name { font-weight: 700; font-size: 0.85rem; }
-.pair-trades { font-size: 0.72rem; color: var(--text-muted); }
-.pair-pnl { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; }
+    <div class="modal-overlay" id="positionModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title" id="positionModalTitle">New Position</h3><button class="modal-close" onclick="app.closePositionModal()">✕</button></div>
+            <div class="modal-body"><form id="positionForm" onsubmit="return false;">
+                <input type="hidden" id="positionRowIndex">
+                <div class="form-row">
+                    <div class="form-group"><label>Date Opened</label><input type="date" id="posDate" class="form-input"></div>
+                    <div class="form-group"><label>Pair *</label><select id="posPair" class="form-input"><option value="">Select pair</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Direction</label><select id="posType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select></div>
+                    <div class="form-group"><label>Strategy</label><select id="posStrategy" class="form-input"><option value="">Select strategy</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Entry Price *</label><input type="text" id="posEntry" class="form-input amount-input" placeholder="0.00"></div>
+                    <div class="form-group"><label>Current Price</label><input type="text" id="posCurrent" class="form-input amount-input" placeholder="0.00"></div>
+                </div>
+                <div class="form-row three">
+                    <div class="form-group"><label>Quantity</label><input type="text" id="posQty" class="form-input amount-input" placeholder="1"></div>
+                    <div class="form-group"><label>Stop Loss</label><input type="text" id="posSL" class="form-input amount-input" placeholder="0.00"></div>
+                    <div class="form-group"><label>Take Profit</label><input type="text" id="posTP" class="form-input amount-input" placeholder="0.00"></div>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea id="posNotes" class="form-input" rows="2" placeholder="Position notes..."></textarea></div>
+            </form></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closePositionModal()">Cancel</button><button class="btn-primary" onclick="app.savePositionEntry()">Save Position</button></div>
+        </div>
+    </div>
 
-/* ===== RECENT TRADES & REMINDERS ===== */
-.recent-list { display: flex; flex-direction: column; gap: 10px; }
-.recent-item { display: flex; align-items: center; gap: 14px; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); }
-.recent-icon { font-size: 0.7rem; }
-.recent-info { flex: 1; }
-.recent-title { font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.recent-date { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
-.recent-amount { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; }
+    <div class="modal-overlay" id="strategyModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title" id="strategyModalTitle">New Strategy</h3><button class="modal-close" onclick="app.closeStrategyModal()">✕</button></div>
+            <div class="modal-body"><form id="strategyForm" onsubmit="return false;">
+                <input type="hidden" id="strategyRowIndex">
+                <div class="form-group"><label>Strategy Name *</label><input type="text" id="stratName" class="form-input" placeholder="e.g., Breakout Trading"></div>
+                <div class="form-group"><label>Description</label><textarea id="stratDesc" class="form-input" rows="3" placeholder="Describe your strategy rules..."></textarea></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Timeframe</label><select id="stratTimeframe" class="form-input"><option value="">Select</option><option value="1M">1 Minute</option><option value="5M">5 Minutes</option><option value="15M">15 Minutes</option><option value="30M">30 Minutes</option><option value="1H">1 Hour</option><option value="4H">4 Hours</option><option value="1D">Daily</option><option value="1W">Weekly</option></select></div>
+                    <div class="form-group"><label>Indicators</label><input type="text" id="stratIndicators" class="form-input" placeholder="RSI, MACD, Volume..."></div>
+                </div>
+            </form></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeStrategyModal()">Cancel</button><button class="btn-primary" onclick="app.saveStrategyEntry()">Save Strategy</button></div>
+        </div>
+    </div>
 
-.reminders-list { display: flex; flex-direction: column; gap: 10px; }
-.reminder-card { display: flex; align-items: flex-start; gap: 12px; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); }
-.reminder-icon { font-size: 1.1rem; }
-.reminder-msg { font-size: 0.82rem; font-weight: 600; line-height: 1.4; }
-.reminder-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+    <div class="modal-overlay" id="reminderModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title" id="reminderModalTitle">New Reminder</h3><button class="modal-close" onclick="app.closeReminderModal()">✕</button></div>
+            <div class="modal-body"><form id="reminderForm" onsubmit="return false;">
+                <input type="hidden" id="reminderRowIndex">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="remDate" class="form-input"></div>
+                    <div class="form-group"><label>Time</label><input type="time" id="remTime" class="form-input"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Pair (optional)</label><input type="text" id="remPair" class="form-input" placeholder="BTC/USDT"></div>
+                    <div class="form-group"><label>Type</label><select id="remType" class="form-input"><option value="GENERAL">General</option><option value="PRICE_ALERT">Price Alert</option><option value="NEWS">News</option><option value="EVENT">Event</option><option value="STRATEGY">Strategy</option></select></div>
+                </div>
+                <div class="form-group"><label>Message *</label><textarea id="remMessage" class="form-input" rows="3" placeholder="What do you want to be reminded about?"></textarea></div>
+            </form></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeReminderModal()">Cancel</button><button class="btn-primary blue" onclick="app.saveReminderEntry()">Set Reminder</button></div>
+        </div>
+    </div>
 
-/* ===== TABLES ===== */
-.table-container { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.data-table thead { background: var(--bg-secondary); position: sticky; top: 0; }
-.data-table th { padding: 12px 14px; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; border-bottom: 1px solid var(--border); }
-.data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.data-table tr:hover { background: rgba(255,255,255,0.02); }
-.mono-text { font-family: var(--font-mono); font-size: 0.8rem; }
-.empty-cell { text-align: center; padding: 40px !important; color: var(--text-muted); }
+    <div class="modal-overlay" id="viewDetailsModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title">Trade Details</h3><button class="modal-close" onclick="app.closeViewDetailsModal()">✕</button></div>
+            <div class="modal-body"><div id="detailsList" class="details-list"></div></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="app.closeViewDetailsModal()">Close</button></div>
+        </div>
+    </div>
 
-.filter-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; padding: 14px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
-.filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.filter-input { width: 130px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.78rem; }
-.filter-separator { color: var(--text-muted); font-size: 0.8rem; }
-.filter-summary { display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-secondary); }
-.summary-value { font-family: var(--font-mono); font-weight: 700; }
+    <div class="modal-overlay" id="closePositionModal">
+        <div class="modal">
+            <div class="modal-header"><h3 class="modal-title">Close Position</h3><button class="modal-close" onclick="app.cancelClosePosition()">✕</button></div>
+            <div class="modal-body">
+                <div id="closePosInfo" class="close-pos-info"></div>
+                <div class="form-group">
+                    <label>Exit Price *</label>
+                    <input type="text" id="closeExitPrice" class="form-input amount-input" placeholder="0.00">
+                </div>
+                <div id="closePosPreview" class="close-pos-preview"></div>
+                <div class="form-group">
+                    <label>⏱ Duration</label>
+                    <div class="duration-toggle">
+                        <button type="button" class="dur-btn active" id="durAutoBtn" onclick="app.setDurationMode('auto')">Auto</button>
+                        <button type="button" class="dur-btn" id="durManualBtn" onclick="app.setDurationMode('manual')">Manual</button>
+                    </div>
+                    <div id="durAutoDisplay" class="dur-auto-display">Calculated on close</div>
+                    <input type="text" id="durManualInput" class="form-input" placeholder="e.g. 2d 5h 30m" style="display:none">
+                </div>
+                <div class="form-group">
+                    <label>📸 Trading Chart Screenshot (optional)</label>
+                    <div class="screenshot-upload-area" id="screenshotArea">
+                        <input type="file" id="closeScreenshot" accept="image/*" capture="environment" style="display:none">
+                        <div class="screenshot-placeholder" id="screenshotPlaceholder" onclick="document.getElementById('closeScreenshot').click()">
+                            <span class="screenshot-icon">📷</span>
+                            <span class="screenshot-text">Tap to upload chart screenshot</span>
+                        </div>
+                        <div class="screenshot-preview-wrap" id="screenshotPreviewWrap" style="display:none">
+                            <img id="screenshotPreviewImg" class="screenshot-preview-img" alt="Screenshot">
+                            <button class="screenshot-remove" onclick="app.removeCloseScreenshot()">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes (optional)</label>
+                    <textarea id="closeNotes" class="form-input" rows="2" placeholder="Add closing notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="app.cancelClosePosition()">Cancel</button>
+                <button class="btn-primary" id="confirmCloseBtn" onclick="app.confirmClosePosition()">Close Position</button>
+            </div>
+        </div>
+    </div>
 
-/* ===== TYPE BADGES ===== */
-.type-badge { padding: 3px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; }
-.type-badge.long { background: var(--green-dim); color: var(--green); }
-.type-badge.short { background: var(--red-dim); color: var(--red); }
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <div class="settings-header"><h3>⚙️ Settings</h3><button class="modal-close" id="settingsClose">✕</button></div>
+            <div class="settings-body">
+                <div class="settings-section">
+                    <h4 class="settings-section-title">🖼️ Dashboard Wallpaper</h4>
+                    <div class="wallpaper-preview" id="wallpaperPreview">
+                        <span class="wallpaper-placeholder">No wallpaper set</span>
+                    </div>
+                    <div class="upload-row">
+                        <label class="btn-sm upload-label" for="wallpaperUpload">📷 Choose Image</label>
+                        <input type="file" id="wallpaperUpload" accept="image/*" style="display:none">
+                        <button class="btn-sm secondary" id="removeWallpaper">Remove</button>
+                    </div>
+                </div>
 
-.positive { color: var(--green) !important; }
-.negative { color: var(--red) !important; }
+                <div class="settings-section">
+                    <h4 class="settings-section-title">🎨 App Icon / Logo</h4>
+                    <div class="icon-preview-row">
+                        <img src="assets/logo.png" id="iconPreview" class="icon-preview" alt="Current Icon">
+                        <div class="icon-info">
+                            <p class="icon-desc">Used as header logo and dashboard banner</p>
+                            <div class="upload-row">
+                                <label class="btn-sm upload-label" for="iconUpload">📷 Change Icon</label>
+                                <input type="file" id="iconUpload" accept="image/*" style="display:none">
+                                <button class="btn-sm secondary" id="resetIcon">Reset Default</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-/* ===== ACTION BUTTONS ===== */
-.action-btn {
-    padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border);
-    background: transparent; color: var(--text-secondary); cursor: pointer;
-    font-size: 0.72rem; font-weight: 600; font-family: var(--font-body); transition: 0.2s;
-}
-.action-btn.edit:hover { border-color: var(--blue); color: var(--blue); }
-.action-btn.delete:hover, .action-btn.dismiss:hover { border-color: var(--red); color: var(--red); }
-.action-btn.view:hover { border-color: var(--purple); color: var(--purple); }
-.action-btn.close-pos { border-color: var(--gold); color: var(--gold); }
-.action-btn.close-pos:hover { background: var(--gold-dim); }
-.actions-cell { white-space: nowrap; display: flex; gap: 4px; }
+                <div class="settings-section">
+                    <h4 class="settings-section-title">💱 Trading Pairs</h4>
+                    <div class="add-pair-row">
+                        <input type="text" id="newPairInput" class="form-input" placeholder="e.g. PEPE/USDT or PEPE">
+                        <button class="btn-sm" id="addPairBtn">+ Add</button>
+                    </div>
+                    <div id="customPairsList" class="custom-pairs-list"></div>
+                </div>
 
-/* ===== POSITIONS ===== */
-.positions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
-.position-card {
-    background: var(--bg-card); border-radius: var(--radius); padding: 22px;
-    border: 1px solid var(--border); border-left: 3px solid var(--text-muted);
-}
-.position-card.positive { border-left-color: var(--green); }
-.position-card.negative { border-left-color: var(--red); }
+                <div class="settings-section">
+                    <h4 class="settings-section-title">🔗 API Connection</h4>
+                    <div class="form-group"><label>Google Apps Script Web App URL</label><input type="url" id="webAppUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec"><button class="btn-sm" id="testConnection" style="margin-top:8px">Test Connection</button></div>
+                    <div class="form-group toggle-group"><label>Auto Sync</label><input type="checkbox" id="autoSync" checked></div>
+                    <button class="btn-sm secondary" id="hardRefreshBtn" style="margin-top:12px">🔄 Hard Refresh (Clear Cache)</button>
+                </div>
 
-.position-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
-.position-pair { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.strategy-tag { padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; background: var(--purple-dim); color: var(--purple); font-weight: 600; }
-.position-pnl { text-align: right; }
-.pnl-value { font-size: 1.3rem; font-weight: 800; font-family: var(--font-mono); }
-.pnl-percent { font-size: 0.82rem; font-weight: 600; }
+                <div class="settings-section">
+                    <h4 class="settings-section-title">📡 OKX API (Trade Sync)</h4>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">Sync your OKX trades automatically. Keys are stored securely on your Google Apps Script server — never in the browser.</p>
+                    <div id="okxStatusBadge" class="okx-status-badge disconnected"><span class="okx-status-dot"></span><span class="okx-status-text">Not Connected</span></div>
+                    <div class="form-group"><label>API Key</label><input type="text" id="okxApiKey" class="form-input" placeholder="Your OKX API Key" autocomplete="off"></div>
+                    <div class="form-group"><label>Secret Key</label><input type="password" id="okxSecretKey" class="form-input" placeholder="Your OKX Secret Key" autocomplete="off"></div>
+                    <div class="form-group"><label>Passphrase</label><input type="password" id="okxPassphrase" class="form-input" placeholder="Your OKX Passphrase" autocomplete="off"></div>
+                    <div class="form-group toggle-group"><label>Demo Trading Mode</label><input type="checkbox" id="okxDemoMode"></div>
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                        <button class="btn-sm okx-save-btn" id="okxSaveKeys">💾 Save Keys</button>
+                        <button class="btn-sm" id="okxTestBtn">🔌 Test Connection</button>
+                    </div>
+                    <div class="form-group toggle-group" style="margin-top:12px"><label>Auto-Sync OKX Trades (every 60s)</label><input type="checkbox" id="okxAutoSync"></div>
+                </div>
+            </div>
+            <div class="settings-footer"><button class="btn-secondary" id="settingsCancel">Cancel</button><button class="btn-primary" id="settingsSave">Save Settings</button></div>
+        </div>
+    </div>
 
-.position-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
-.pos-stat { display: flex; flex-direction: column; gap: 4px; }
-.pos-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-.pos-value { font-size: 0.9rem; font-weight: 700; }
+    <div id="toastContainer" class="toast-container"></div>
 
-.position-progress { margin-bottom: 14px; }
-.progress-bar { position: relative; height: 6px; border-radius: 3px; background: var(--border-strong); overflow: visible; }
-.progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--red), var(--gold), var(--green)); transition: width 0.5s ease; }
-.progress-marker { position: absolute; top: -5px; transform: translateX(-50%); width: 16px; height: 16px; border-radius: 50%; background: var(--text-primary); border: 3px solid var(--bg-card); box-shadow: 0 0 6px rgba(255,255,255,0.2); }
-.progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.68rem; font-family: var(--font-mono); }
-
-.position-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border); }
-.pos-date { font-size: 0.72rem; color: var(--text-muted); }
-.pos-actions { display: flex; gap: 8px; }
-
-/* ===== STRATEGIES ===== */
-.strategies-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-.strategy-card { background: var(--bg-card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
-.strategy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.strategy-name { font-size: 1.05rem; font-weight: 800; }
-.timeframe-badge { padding: 3px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; background: var(--purple-dim); color: var(--purple); }
-.strategy-desc { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px; }
-.strategy-indicators { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.indicator-tag { padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; background: rgba(255,255,255,0.05); color: var(--text-muted); }
-.strategy-stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.strategy-winrate { display: flex; align-items: center; gap: 10px; flex: 1; }
-.wr-bar { width: 80px; height: 6px; border-radius: 3px; background: var(--border-strong); overflow: hidden; }
-.wr-fill { height: 100%; border-radius: 3px; }
-.wr-text { font-size: 0.85rem; font-weight: 800; font-family: var(--font-mono); }
-.strategy-trades { font-size: 0.75rem; color: var(--text-muted); }
-.strategy-pnl { font-size: 0.82rem; font-weight: 700; font-family: var(--font-mono); margin-bottom: 12px; padding: 6px 10px; border-radius: 8px; }
-.strategy-pnl.positive { color: var(--green); background: rgba(0,255,136,0.06); }
-.strategy-pnl.negative { color: var(--red); background: rgba(255,68,68,0.06); }
-.strategy-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
-
-/* ===== REMINDERS ===== */
-.section-title { font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 14px; }
-.reminders-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
-.reminder-card-full { background: var(--bg-card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); border-left: 3px solid var(--blue); }
-.reminder-card-full.dismissed { opacity: 0.4; border-left-color: var(--text-muted); }
-.reminder-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.reminder-type-icon { font-size: 1.3rem; }
-.reminder-type-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 700; background: var(--blue-dim); color: var(--blue); text-transform: uppercase; }
-.reminder-status { margin-left: auto; display: flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 8px; font-size: 0.68rem; font-weight: 700; background: var(--green-dim); color: var(--green); }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s ease infinite; }
-.reminder-message { font-size: 0.92rem; font-weight: 600; line-height: 1.5; margin-bottom: 10px; }
-.reminder-bottom { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.reminder-datetime { font-size: 0.78rem; font-family: var(--font-mono); color: var(--text-muted); }
-.reminder-pair { font-size: 0.78rem; font-weight: 700; }
-.reminder-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
-
-/* ===== BUTTONS ===== */
-.btn-primary {
-    padding: 10px 22px; border-radius: var(--radius-sm); border: none;
-    background: linear-gradient(135deg, var(--green), var(--green-dark));
-    color: var(--bg-primary); font-family: var(--font-body);
-    font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: 0.2s;
-}
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.btn-primary.blue { background: linear-gradient(135deg, var(--blue), #3388dd); color: #fff; }
-.btn-secondary {
-    padding: 10px 22px; border-radius: var(--radius-sm);
-    border: 1px solid var(--border); background: transparent;
-    color: var(--text-secondary); font-family: var(--font-body);
-    font-size: 0.85rem; font-weight: 600; cursor: pointer;
-}
-.btn-sm { padding: 7px 14px; border-radius: 8px; border: none; background: var(--green-dim); color: var(--green); font-family: var(--font-body); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
-.btn-sm.secondary { background: rgba(255,255,255,0.05); color: var(--text-secondary); }
-
-/* ===== MODALS ===== */
-.modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-    align-items: center; justify-content: center; z-index: 200;
-}
-.modal-overlay.active { display: flex; }
-.modal {
-    background: var(--bg-card); border-radius: 20px; width: 92%;
-    max-width: 540px; max-height: 90vh; overflow-y: auto;
-    border: 1px solid var(--border);
-    animation: slideUp 0.3s ease;
-}
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); }
-.modal-title { font-size: 1.1rem; font-weight: 800; }
-.modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; padding: 4px; }
-.modal-body { padding: 20px 24px; }
-.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
-
-/* ===== FORMS ===== */
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-.form-input {
-    width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
-    border: 1px solid var(--border); background: var(--bg-input);
-    color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem;
-    outline: none; transition: 0.2s;
-}
-.form-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(0,255,136,0.1); }
-select.form-input { cursor: pointer; }
-textarea.form-input { font-family: var(--font-body); resize: vertical; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.form-row.three { grid-template-columns: 1fr 1fr 1fr; }
-.toggle-group { display: flex; align-items: center; justify-content: space-between; }
-
-/* ===== DETAILS ===== */
-.details-list { display: flex; flex-direction: column; gap: 10px; }
-.detail-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); }
-.detail-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-.detail-notes { padding: 12px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); }
-.detail-notes p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-top: 6px; }
-
-/* ===== SETTINGS ===== */
-.settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; justify-content: flex-end; }
-.settings-overlay.active { display: flex; }
-.settings-panel {
-    width: 360px; max-width: 100%; height: 100%;
-    background: var(--bg-card); border-left: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    animation: slideInRight 0.3s ease;
-}
-.settings-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border); }
-.settings-header h3 { font-size: 1.1rem; font-weight: 700; }
-.settings-body { padding: 20px; flex: 1; overflow-y: auto; }
-.settings-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
-
-/* ===== TOAST ===== */
-.toast-container { position: fixed; bottom: 80px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
-.toast {
-    padding: 12px 18px; border-radius: var(--radius-sm);
-    background: var(--bg-card); border: 1px solid var(--border);
-    color: var(--text-primary); font-size: 0.82rem; font-weight: 500;
-    display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    animation: slideUp 0.3s ease; transition: opacity 0.3s;
-}
-.toast.success { border-color: rgba(0,255,136,0.3); }
-.toast.error { border-color: rgba(255,71,87,0.3); }
-.toast.warning { border-color: rgba(255,193,7,0.3); }
-
-/* ===== EMPTY STATE ===== */
-.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-.empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.3; }
-
-/* ===== BOTTOM NAV ===== */
-.bottom-nav { display: none; }
-
-/* ===== ANIMATIONS ===== */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
-
-/* ===== FLATPICKR OVERRIDES ===== */
-.flatpickr-calendar { background: var(--bg-card) !important; border: 1px solid var(--border-strong) !important; border-radius: 14px !important; box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important; }
-.flatpickr-day { color: var(--text-primary) !important; border-radius: 8px !important; }
-.flatpickr-day.selected { background: var(--green) !important; color: var(--bg-primary) !important; }
-.flatpickr-day:hover { background: rgba(255,255,255,0.08) !important; }
-.flatpickr-months .flatpickr-month { color: var(--text-primary) !important; }
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-    .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; z-index: 95; }
-    .sidebar.active { transform: translateX(0); }
-    .sidebar-overlay.active { display: block; }
-    .menu-btn { display: flex; }
-    
-    .main-content { margin-left: 0; padding: 16px; padding-bottom: calc(var(--bottom-nav-height) + 20px); }
-    
-    .bottom-nav {
-        display: flex; position: fixed; bottom: 0; left: 0; right: 0;
-        height: var(--bottom-nav-height);
-        background: rgba(10,10,15,0.95); backdrop-filter: blur(20px);
-        border-top: 1px solid var(--border);
-        justify-content: space-around; align-items: center;
-        z-index: 100; padding: 0 4px;
-    }
-    .bottom-nav-item {
-        display: flex; flex-direction: column; align-items: center; gap: 3px;
-        background: none; border: none; cursor: pointer; padding: 8px;
-        color: var(--text-muted); font-family: var(--font-body); transition: 0.2s;
-    }
-    .bottom-nav-item.active { color: var(--green); }
-    .bnav-icon { font-size: 1.2rem; }
-    .bnav-text { font-size: 0.62rem; font-weight: 600; }
-    
-    .stats-grid, .stats-grid.six { grid-template-columns: repeat(2, 1fr); }
-    .dashboard-grid { grid-template-columns: 1fr; }
-    .analytics-grid { grid-template-columns: repeat(2, 1fr); }
-    .form-row { grid-template-columns: 1fr; }
-    .form-row.three { grid-template-columns: 1fr; }
-    .position-grid { grid-template-columns: repeat(2, 1fr); }
-    .filter-bar { flex-direction: column; }
-    .filter-summary { flex-wrap: wrap; }
-    .strategies-grid { grid-template-columns: 1fr; }
-    .reminders-grid { grid-template-columns: 1fr; }
-    
-    .page-title { font-size: 1.2rem; }
-    .chart-body { height: 220px; }
-    
-    .toast-container { bottom: calc(var(--bottom-nav-height) + 10px); left: 16px; right: 16px; }
-    
-    .settings-panel { width: 100%; }
-    
-    .header-ticker { margin: 0 8px; }
-    .sidebar-strategy-rotator { margin: 0 8px 8px; }
-}
-
-@media (max-width: 400px) {
-    .stats-grid, .stats-grid.six { grid-template-columns: 1fr; }
-    .stat-card { padding: 14px; }
-    .analytics-grid { grid-template-columns: 1fr 1fr; }
-}
-
-/* ===== DASHBOARD WALLPAPER ===== */
-.dashboard-wallpaper {
-    position: relative;
-    width: 100%;
-    height: 180px;
-    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
-    background-size: cover;
-    background-position: center;
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255,255,255,0.06);
-}
-.wallpaper-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.2) 100%);
-}
-
-/* ===== SETTINGS SECTIONS ===== */
-.settings-section {
-    padding: 16px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.settings-section:last-child { border-bottom: none; }
-.settings-section-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--green);
-    margin: 0 0 12px;
-}
-
-/* Deposit/Withdraw */
-.deposit-withdraw-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-.dw-group label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; display: block; }
-.dw-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-.btn-primary.green { background: linear-gradient(135deg, #00cc66, #00aa55); }
-.btn-primary.green:hover { background: linear-gradient(135deg, #00dd77, #00bb66); }
-.btn-primary.red { background: linear-gradient(135deg, #ff4757, #cc3344); }
-.btn-primary.red:hover { background: linear-gradient(135deg, #ff5a6b, #dd4455); }
-.dw-history {
-    max-height: 120px;
-    overflow-y: auto;
-    font-size: 0.75rem;
-}
-.dw-history-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 8px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.03);
-    margin-bottom: 4px;
-}
-.dw-history-item .dw-type { font-weight: 600; }
-.dw-history-item .dw-type.deposit { color: var(--green); }
-.dw-history-item .dw-type.withdraw { color: var(--red); }
-
-/* Wallpaper preview */
-.wallpaper-preview {
-    width: 100%;
-    height: 80px;
-    background: rgba(255,255,255,0.03);
-    border: 1px dashed rgba(255,255,255,0.1);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    margin-bottom: 10px;
-    background-size: cover;
-    background-position: center;
-}
-.wallpaper-placeholder { color: var(--text-muted); font-size: 0.8rem; }
-.upload-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-.upload-label {
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* Icon preview */
-.icon-preview-row {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-}
-.icon-preview {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    object-fit: contain;
-    border: 2px solid rgba(255,255,255,0.1);
-    background: rgba(0,0,0,0.3);
-    flex-shrink: 0;
-}
-.icon-info { flex: 1; }
-.icon-desc { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 8px; }
-
-/* ===== CLOSE POSITION MODAL ===== */
-.close-pos-info {
-    background: rgba(255,255,255,0.03);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 14px;
-    font-size: 0.85rem;
-}
-.close-pos-info .pos-pair {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--green);
-}
-.close-pos-info .pos-detail {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 6px;
-    color: var(--text-muted);
-}
-.close-pos-preview {
-    background: rgba(255,255,255,0.03);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 14px;
-    text-align: center;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-}
-.close-pos-preview .pnl-preview {
-    font-size: 1.3rem;
-    font-weight: 800;
-}
-.field-hint {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin: 2px 0 8px;
-}
-
-/* Screenshot upload */
-.screenshot-upload-area {
-    border: 2px dashed rgba(255,255,255,0.1);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-}
-.screenshot-upload-area:hover { border-color: var(--green); }
-.screenshot-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    cursor: pointer;
-    gap: 8px;
-}
-.screenshot-icon { font-size: 2rem; }
-.screenshot-text { font-size: 0.8rem; color: var(--text-muted); }
-.screenshot-preview-wrap {
-    position: relative;
-    max-height: 200px;
-    overflow: hidden;
-}
-.screenshot-preview-img {
-    width: 100%;
-    max-height: 200px;
-    object-fit: contain;
-    display: block;
-}
-.screenshot-remove {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(255,0,0,0.8);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.screenshot-remove:hover { background: #ff0000; }
-
-@media (max-width: 600px) {
-    .dashboard-wallpaper { height: 140px; border-radius: 12px; }
-    .wallpaper-logo { width: 42px; height: 42px; }
-    .wallpaper-title { font-size: 1.2rem; }
-    .deposit-withdraw-row { grid-template-columns: 1fr; }
-    .icon-preview-row { flex-direction: column; text-align: center; }
-    
-    /* Mobile touch targets */
-    .action-btn { min-height: 36px; min-width: 36px; padding: 6px 12px; }
-    .btn-sm { min-height: 36px; padding: 6px 14px; }
-    .btn-primary, .btn-secondary { min-height: 44px; font-size: 0.85rem; }
-    
-    /* Modal scroll on small screens */
-    .modal { max-height: 90vh; display: flex; flex-direction: column; }
-    .modal-body { overflow-y: auto; max-height: 65vh; -webkit-overflow-scrolling: touch; }
-    
-    /* Trades table horizontal scroll */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .trades-table { min-width: 650px; }
-    
-    /* Strategy card mobile */
-    .strategy-card { padding: 14px; }
-    .strategy-name { font-size: 0.95rem; }
-    .strategy-stats { flex-direction: column; align-items: flex-start; gap: 6px; }
-    
-    /* Duration toggle */
-    .duration-toggle { gap: 6px; }
-    .dur-btn { padding: 8px; font-size: 0.8rem; }
-    
-    /* Pair tags scroll */
-    .pairs-tag-list { max-height: 200px; overflow-y: auto; }
-    
-    /* Trade screenshot */
-    .trade-screenshot-row { flex-direction: column; }
-    .trade-ss-thumb { max-height: 60px; }
-    
-    /* Position cards */
-    .position-card { padding: 14px; }
-    .position-header { flex-direction: column; gap: 8px; }
-    .page-header-actions { flex-wrap: wrap; gap: 6px; }
-    .page-header-actions .btn-primary { font-size: 0.78rem; }
-    
-    /* Close position modal */
-    .close-pos-info { font-size: 0.85rem; }
-    .screenshot-upload-area { padding: 12px; }
-    
-    /* Settings */
-    .settings-body { padding: 12px; }
-    .settings-section { padding: 14px 0; }
-}
-
-/* ===== CUSTOM PAIRS ===== */
-.add-pair-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
-}
-.add-pair-row .form-input { flex: 1; }
-.custom-pairs-list { margin-top: 4px; }
-.pairs-tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-.pair-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-}
-.pair-tag.default {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-muted);
-    border: 1px solid rgba(255,255,255,0.06);
-}
-.pair-tag.custom {
-    background: rgba(0,255,136,0.1);
-    color: var(--primary);
-    border: 1px solid rgba(0,255,136,0.2);
-}
-.pair-remove {
-    background: none;
-    border: none;
-    color: #ff4444;
-    cursor: pointer;
-    font-size: 0.7rem;
-    padding: 0 2px;
-    line-height: 1;
-}
-.pair-remove:hover { color: #ff0000; }
-
-/* ===== DURATION TOGGLE ===== */
-.duration-toggle {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 8px;
-}
-.dur-btn {
-    flex: 1;
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,0.03);
-    color: var(--text-muted);
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-.dur-btn.active {
-    background: rgba(0,255,136,0.12);
-    color: var(--primary);
-    border-color: var(--primary);
-}
-.dur-auto-display {
-    padding: 8px 12px;
-    background: rgba(0,255,136,0.05);
-    border-radius: 8px;
-    color: var(--cyan);
-    font-size: 0.8rem;
-    text-align: center;
-}
-
-/* ===== TRADE SCREENSHOT (in edit modal) ===== */
-.trade-screenshot-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-.trade-screenshot-preview {
-    flex: 1;
-    min-height: 40px;
-}
-.trade-ss-thumb {
-    max-height: 80px;
-    max-width: 100%;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    object-fit: contain;
-}
-.trade-screenshot-btns {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-/* ===== OKX SYNC ===== */
-.okx-sync-btn {
-    background: rgba(255,200,0,0.08);
-    border: 1px solid rgba(255,200,0,0.2);
-    color: var(--gold);
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-.okx-sync-btn:hover { background: rgba(255,200,0,0.15); }
-.okx-sync-btn.syncing { opacity: 0.6; pointer-events: none; }
-.okx-badge {
-    padding: 2px 7px;
-    border-radius: 4px;
-    font-size: 0.6rem;
-    font-weight: 800;
-    background: rgba(255,200,0,0.12);
-    color: var(--gold);
-    border: 1px solid rgba(255,200,0,0.25);
-    letter-spacing: 0.5px;
-}
-.okx-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-bottom: 12px;
-}
-.okx-status-badge.connected {
-    background: rgba(0,255,136,0.08);
-    border: 1px solid rgba(0,255,136,0.15);
-    color: var(--green);
-}
-.okx-status-badge.disconnected {
-    background: rgba(255,68,68,0.06);
-    border: 1px solid rgba(255,68,68,0.12);
-    color: var(--text-muted);
-}
-.okx-status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-}
-.okx-status-badge.connected .okx-status-dot { background: var(--green); animation: pulse 2s ease infinite; }
-.okx-status-badge.disconnected .okx-status-dot { background: var(--text-muted); }
-.okx-save-btn {
-    background: rgba(255,200,0,0.1);
-    border: 1px solid rgba(255,200,0,0.2);
-    color: var(--gold);
-}
-.okx-save-btn:hover { background: rgba(255,200,0,0.2); }
-
-/* ===== LIVE PRICES ===== */
-.page-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.live-price-status {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    background: rgba(0,255,136,0.08);
-    border: 1px solid rgba(0,255,136,0.15);
-}
-.live-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 2s ease infinite;
-}
-.live-text {
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.live-btn {
-    background: rgba(0,200,255,0.08);
-    border: 1px solid rgba(0,200,255,0.2);
-    color: var(--cyan);
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-.live-btn:hover { background: rgba(0,200,255,0.15); }
-.live-btn.refreshing {
-    opacity: 0.6;
-    pointer-events: none;
-    animation: pulse 1s ease infinite;
-}
-.price-live {
-    color: var(--cyan) !important;
-    position: relative;
-}
-.price-live::after {
-    content: '';
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--cyan);
-    display: inline-block;
-    margin-left: 4px;
-    vertical-align: middle;
-    animation: pulse 2s ease infinite;
-}
-
-/* ===== TRADE DETAIL SCREENSHOT ===== */
-.detail-screenshot {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-}
-.detail-screenshot .detail-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 700;
-    font-size: 0.85rem;
-}
-.detail-screenshot-wrap {
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    background: rgba(0,0,0,0.3);
-}
-.detail-screenshot-img {
-    width: 100%;
-    max-height: 300px;
-    object-fit: contain;
-    display: block;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-.detail-screenshot-img:hover { opacity: 0.85; }
-.screenshot-hint {
-    text-align: center;
-    font-size: 0.68rem;
-    color: var(--text-muted);
-    padding: 4px 0 6px;
-    margin: 0;
-}
-.screenshot-badge {
-    cursor: default;
-    font-size: 0.9rem;
-}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered'));
+        }
+    </script>
+</body>
+</html>
