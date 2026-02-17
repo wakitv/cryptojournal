@@ -109,6 +109,11 @@ class CryptoAPI {
     async getOKXStatus() { return await this.request('getOKXStatus'); }
     async testOKXConnection() { return await this.request('testOKXConnection'); }
     async syncOKXData() { return await this.request('syncOKXData'); }
+    async getOKXBalance() { return await this.request('getOKXBalance'); }
+    
+    // ===== DATA MANAGEMENT =====
+    async clearAllData() { return await this.request('clearAllData'); }
+    async clearSheet(sheet) { return await this.request('clearSheet', { sheet }); }
     
     // ===== SCREENSHOT (POST - base64 too large for GET) =====
     async uploadScreenshot(data) { return await this.postRequest('uploadScreenshot', data); }
