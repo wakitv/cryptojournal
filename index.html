@@ -174,7 +174,8 @@
                             <span class="live-dot"></span>
                             <span class="live-text">Live</span>
                         </div>
-                        <button class="btn-sm live-btn" id="refreshPricesBtn" title="Fetch live prices from OKX">📡 Refresh Prices</button>
+                        <button class="btn-sm live-btn" id="refreshPricesBtn" title="Fetch live prices from OKX">📡 Prices</button>
+                        <button class="btn-sm okx-sync-btn" id="syncOKXBtn" title="Sync trades from OKX" style="display:none">🔄 Sync OKX</button>
                         <button class="btn-primary" id="addPositionBtn">+ New Position</button>
                     </div>
                 </div>
@@ -434,6 +435,21 @@
                     <div class="form-group"><label>Google Apps Script Web App URL</label><input type="url" id="webAppUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec"><button class="btn-sm" id="testConnection" style="margin-top:8px">Test Connection</button></div>
                     <div class="form-group toggle-group"><label>Auto Sync</label><input type="checkbox" id="autoSync" checked></div>
                     <button class="btn-sm secondary" id="hardRefreshBtn" style="margin-top:12px">🔄 Hard Refresh (Clear Cache)</button>
+                </div>
+
+                <div class="settings-section">
+                    <h4 class="settings-section-title">📡 OKX API (Trade Sync)</h4>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">Sync your OKX trades automatically. Keys are stored securely on your Google Apps Script server — never in the browser.</p>
+                    <div id="okxStatusBadge" class="okx-status-badge disconnected"><span class="okx-status-dot"></span><span class="okx-status-text">Not Connected</span></div>
+                    <div class="form-group"><label>API Key</label><input type="text" id="okxApiKey" class="form-input" placeholder="Your OKX API Key" autocomplete="off"></div>
+                    <div class="form-group"><label>Secret Key</label><input type="password" id="okxSecretKey" class="form-input" placeholder="Your OKX Secret Key" autocomplete="off"></div>
+                    <div class="form-group"><label>Passphrase</label><input type="password" id="okxPassphrase" class="form-input" placeholder="Your OKX Passphrase" autocomplete="off"></div>
+                    <div class="form-group toggle-group"><label>Demo Trading Mode</label><input type="checkbox" id="okxDemoMode"></div>
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                        <button class="btn-sm okx-save-btn" id="okxSaveKeys">💾 Save Keys</button>
+                        <button class="btn-sm" id="okxTestBtn">🔌 Test Connection</button>
+                    </div>
+                    <div class="form-group toggle-group" style="margin-top:12px"><label>Auto-Sync OKX Trades (every 60s)</label><input type="checkbox" id="okxAutoSync"></div>
                 </div>
             </div>
             <div class="settings-footer"><button class="btn-secondary" id="settingsCancel">Cancel</button><button class="btn-primary" id="settingsSave">Save Settings</button></div>
