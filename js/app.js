@@ -1339,18 +1339,30 @@ class CryptoTraderApp {
             wrapper.classList.add('collapsed');
         }
         
-        // Auto-detect symbol from first open position
-        const positions = this.data.positions || [];
-        let symbol = this.getTVSymbol('BTC/USDT');
-        if (positions.length > 0 && positions[0].pair) {
-            symbol = this.getTVSymbol(positions[0].pair);
+        // If chart already loaded, don't reset it (user may have selected a different pair)
+        if (container.hasChildNodes() && container.dataset.loadedSymbol) {
+            // Just reload watchlist for updated prices
+            const wlContainer = document.getElementById('tvWatchlistContainer');
+            if (wlContainer && !wlContainer.hasChildNodes()) {
+                this.loadTVWatchlist();
+            }
+            return;
         }
         
-        // Only reload if symbol changed or container is empty
-        if (container.dataset.loadedSymbol !== symbol || !container.hasChildNodes()) {
-            container.dataset.loadedSymbol = symbol;
-            this.loadTVChart(symbol);
+        // First load: use saved selection, then first position, then default
+        const savedSymbol = localStorage.getItem('tvChartSymbol');
+        let symbol;
+        if (savedSymbol) {
+            symbol = savedSymbol;
+        } else {
+            const positions = this.data.positions || [];
+            symbol = (positions.length > 0 && positions[0].pair) 
+                ? this.getTVSymbol(positions[0].pair) 
+                : this.getTVSymbol('BTC/USDT');
         }
+        
+        container.dataset.loadedSymbol = symbol;
+        this.loadTVChart(symbol);
         
         // Load watchlist
         const wlContainer = document.getElementById('tvWatchlistContainer');
@@ -1509,6 +1521,8 @@ class CryptoTraderApp {
                 const symbol = row.dataset.symbol;
                 container.querySelectorAll('.wl-row').forEach(r => r.classList.remove('active'));
                 row.classList.add('active');
+                // Save user selection so it persists across refreshes
+                localStorage.setItem('tvChartSymbol', symbol);
                 const chartContainer = document.getElementById('tvChartContainer');
                 if (chartContainer) {
                     chartContainer.dataset.loadedSymbol = symbol;
