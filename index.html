@@ -171,7 +171,7 @@
                     <h2 class="page-title">Open Positions</h2>
                 </div>
 
-                <!-- TradingView Chart (Collapsible) -->
+                <!-- TradingView Chart + Watchlist (Collapsible) -->
                 <div class="tv-chart-wrapper" id="tvChartWrapper">
                     <div class="tv-chart-header" id="tvChartToggle">
                         <div class="tv-chart-title">
@@ -181,7 +181,10 @@
                         <button class="tv-chart-fold-btn" id="tvFoldBtn">▼</button>
                     </div>
                     <div class="tv-chart-body" id="tvChartBody">
-                        <div id="tvChartContainer" style="height:100%;width:100%"></div>
+                        <div class="tv-split-layout">
+                            <div class="tv-chart-panel" id="tvChartContainer"></div>
+                            <div class="tv-watchlist-panel" id="tvWatchlistContainer"></div>
+                        </div>
                     </div>
                 </div>
 
