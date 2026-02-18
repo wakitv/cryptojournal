@@ -1120,17 +1120,32 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
 .tv-chart-icon {
     font-size: 1.1rem;
 }
-.tv-login-hint {
-    font-size: 0.6rem;
-    font-weight: 500;
-    color: rgba(255,255,255,0.3);
-    font-style: italic;
-    margin-left: 4px;
-    cursor: pointer;
-    transition: opacity 0.3s;
+.tv-chart-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
-.tv-login-hint:hover { opacity: 0.6; }
-.tv-login-hint.hidden { display: none; }
+.tv-open-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(41,98,255,0.3);
+    background: rgba(41,98,255,0.08);
+    color: #5b9cf6;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+}
+.tv-open-btn:hover {
+    background: rgba(41,98,255,0.18);
+    border-color: rgba(41,98,255,0.5);
+    color: #7cb3ff;
+}
+.tv-open-btn svg { flex-shrink: 0; }
 .tv-chart-fold-btn {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
@@ -1365,5 +1380,6 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     }
     .tv-chart-panel { height: 350px; flex-shrink: 0; }
     .tv-chart-title { font-size: 0.78rem; gap: 6px; }
-    .tv-login-hint { display: none; }
+    .tv-open-btn span { display: none; }
+    .tv-open-btn { padding: 5px 8px; }
 }
