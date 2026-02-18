@@ -138,6 +138,10 @@ class CryptoTraderApp {
             clearInterval(this.priceRefreshInterval);
             this.priceRefreshInterval = null;
         }
+        if (tab !== 'positions' && this.wlRefreshInterval) {
+            clearInterval(this.wlRefreshInterval);
+            this.wlRefreshInterval = null;
+        }
         
         switch (tab) {
             case 'dashboard': this.renderDashboard(); break;
@@ -1415,27 +1419,24 @@ class CryptoTraderApp {
         const container = document.getElementById('tvWatchlistContainer');
         if (!container) return;
         
-        const wrapper = document.getElementById('tvChartWrapper');
-        if (wrapper?.classList.contains('collapsed')) return;
-        
-        container.innerHTML = '';
-        
-        // Build watchlist from open positions + custom pairs
-        const symbols = [];
-        const positions = this.data.positions || [];
+        // Build watchlist pairs
+        const pairs = [];
         const addedPairs = new Set();
         
+        // Open positions first
+        const positions = this.data.positions || [];
         positions.forEach(p => {
             if (p.pair && !addedPairs.has(p.pair)) {
-                symbols.push('OKX:' + p.pair.replace('/', ''));
+                pairs.push(p.pair);
                 addedPairs.add(p.pair);
             }
         });
         
+        // Custom watchlist pairs from settings
         const settings = getSettings();
-        (settings.customPairs || []).forEach(p => {
+        (settings.watchlistPairs || []).forEach(p => {
             if (!addedPairs.has(p)) {
-                symbols.push('OKX:' + p.replace('/', ''));
+                pairs.push(p);
                 addedPairs.add(p);
             }
         });
@@ -1443,47 +1444,165 @@ class CryptoTraderApp {
         // Defaults
         ['BTC/USDT','ETH/USDT','SOL/USDT','XRP/USDT','DOGE/USDT','ADA/USDT','HBAR/USDT','SUI/USDT','PEPE/USDT'].forEach(p => {
             if (!addedPairs.has(p)) {
-                symbols.push('OKX:' + p.replace('/', ''));
+                pairs.push(p);
                 addedPairs.add(p);
             }
         });
         
-        const widgetDiv = document.createElement('div');
-        widgetDiv.className = 'tradingview-widget-container';
-        widgetDiv.style.height = '100%';
-        widgetDiv.style.width = '100%';
+        this.watchlistPairs = pairs;
         
-        const innerDiv = document.createElement('div');
-        innerDiv.className = 'tradingview-widget-container__widget';
-        innerDiv.style.height = '100%';
-        innerDiv.style.width = '100%';
-        widgetDiv.appendChild(innerDiv);
+        // Render watchlist UI
+        container.innerHTML = `
+            <div class="wl-header">
+                <span class="wl-title">Watchlist</span>
+                <button class="wl-add-btn" id="wlAddBtn" title="Add pair">+</button>
+            </div>
+            <div class="wl-add-row" id="wlAddRow" style="display:none">
+                <input class="wl-add-input" id="wlAddInput" placeholder="e.g. LINK/USDT" maxlength="20">
+                <button class="wl-add-confirm" id="wlAddConfirm">✓</button>
+            </div>
+            <div class="wl-table-header">
+                <span class="wl-col-sym">Symbol</span>
+                <span class="wl-col-price">Price</span>
+                <span class="wl-col-chg">24h%</span>
+                <span class="wl-col-del"></span>
+            </div>
+            <div class="wl-list" id="wlList">
+                ${pairs.map(p => {
+                    const key = p.replace('/', '');
+                    const base = p.split('/')[0];
+                    const isPosition = positions.some(pos => pos.pair === p);
+                    return `
+                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}" data-pair="${p}" data-symbol="OKX:${key}">
+                        <span class="wl-symbol">${base}<small>/${p.split('/')[1]}</small></span>
+                        <span class="wl-price" id="wlp-${key}">—</span>
+                        <span class="wl-chg" id="wlc-${key}">—</span>
+                        <span class="wl-del" data-pair="${p}" title="Remove">✕</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        `;
         
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js';
-        script.async = true;
-        script.textContent = JSON.stringify({
-            colorTheme: "dark",
-            dateRange: "1D",
-            showChart: false,
-            locale: "en",
-            largeChartUrl: "",
-            isTransparent: true,
-            showSymbolLogo: true,
-            showFloatingTooltip: true,
-            width: "100%",
-            height: "100%",
-            tabs: [
-                {
-                    title: "Watchlist",
-                    symbols: symbols.map(s => ({ s: s })),
-                    originalTitle: "Crypto"
+        // Click row → change chart
+        container.querySelectorAll('.wl-row').forEach(row => {
+            row.addEventListener('click', (e) => {
+                if (e.target.classList.contains('wl-del')) return;
+                const symbol = row.dataset.symbol;
+                container.querySelectorAll('.wl-row').forEach(r => r.classList.remove('active'));
+                row.classList.add('active');
+                const chartContainer = document.getElementById('tvChartContainer');
+                if (chartContainer) {
+                    chartContainer.dataset.loadedSymbol = symbol;
+                    this.loadTVChart(symbol);
                 }
-            ]
+            });
         });
-        widgetDiv.appendChild(script);
-        container.appendChild(widgetDiv);
+        
+        // Click delete → remove from watchlist
+        container.querySelectorAll('.wl-del').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.removeWatchlistPair(btn.dataset.pair);
+            });
+        });
+        
+        // Highlight current chart pair
+        const currentSymbol = document.getElementById('tvChartContainer')?.dataset.loadedSymbol;
+        if (currentSymbol) {
+            container.querySelector(`.wl-row[data-symbol="${currentSymbol}"]`)?.classList.add('active');
+        }
+        
+        // Add pair UI
+        document.getElementById('wlAddBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const addRow = document.getElementById('wlAddRow');
+            if (addRow) {
+                const isHidden = addRow.style.display === 'none';
+                addRow.style.display = isHidden ? 'flex' : 'none';
+                if (isHidden) document.getElementById('wlAddInput')?.focus();
+            }
+        });
+        document.getElementById('wlAddConfirm')?.addEventListener('click', () => this.addWatchlistPair());
+        document.getElementById('wlAddInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.addWatchlistPair();
+        });
+        
+        // Fetch prices
+        this.refreshWatchlistPrices();
+        if (this.wlRefreshInterval) clearInterval(this.wlRefreshInterval);
+        this.wlRefreshInterval = setInterval(() => this.refreshWatchlistPrices(), 15000);
+    }
+    
+    addWatchlistPair() {
+        const input = document.getElementById('wlAddInput');
+        if (!input) return;
+        let pair = input.value.trim().toUpperCase();
+        if (!pair) return;
+        
+        if (!pair.includes('/')) {
+            const match = pair.match(/^(.+?)(USDT|USDC|BTC|ETH|BUSD)$/);
+            if (match) pair = match[1] + '/' + match[2];
+            else { this.showToast('Format: BTC/USDT or BTCUSDT', 'warning'); return; }
+        }
+        
+        if (this.watchlistPairs?.includes(pair)) {
+            this.showToast(pair + ' already in watchlist', 'warning'); return;
+        }
+        
+        const settings = getSettings();
+        if (!settings.watchlistPairs) settings.watchlistPairs = [];
+        settings.watchlistPairs.push(pair);
+        saveSettings(settings);
+        
+        input.value = '';
+        document.getElementById('wlAddRow').style.display = 'none';
+        this.loadTVWatchlist();
+        this.showToast(pair + ' added', 'success');
+    }
+    
+    removeWatchlistPair(pair) {
+        const settings = getSettings();
+        settings.watchlistPairs = (settings.watchlistPairs || []).filter(p => p !== pair);
+        saveSettings(settings);
+        this.loadTVWatchlist();
+    }
+    
+    async refreshWatchlistPrices() {
+        if (!this.watchlistPairs || this.watchlistPairs.length === 0) return;
+        
+        try {
+            let prices = {};
+            if (cryptoAPI.isConfigured()) {
+                const result = await cryptoAPI.getLivePrices(this.watchlistPairs);
+                if (result.success) prices = result.prices || {};
+            }
+            
+            this.watchlistPairs.forEach(pair => {
+                const key = pair.replace('/', '');
+                const priceEl = document.getElementById('wlp-' + key);
+                const chgEl = document.getElementById('wlc-' + key);
+                
+                if (prices[pair] && priceEl) {
+                    const price = parseFloat(prices[pair]);
+                    priceEl.textContent = price >= 1 ? formatWithCommas(price) : price.toPrecision(4);
+                    
+                    const prevPrice = this.prevWLPrices?.[pair];
+                    if (prevPrice && chgEl) {
+                        const chg = ((price - prevPrice) / prevPrice * 100);
+                        chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+                        chgEl.className = 'wl-chg ' + (chg >= 0 ? 'positive' : 'negative');
+                    }
+                    
+                    if (prevPrice && price !== prevPrice && priceEl) {
+                        priceEl.classList.add('wl-flash');
+                        setTimeout(() => priceEl.classList.remove('wl-flash'), 600);
+                    }
+                }
+            });
+            
+            if (!this.prevWLPrices) this.prevWLPrices = {};
+            Object.assign(this.prevWLPrices, prices);
+        } catch (e) { console.warn('Watchlist refresh:', e); }
     }
     
     // ===== POSITION ACTIONS =====
