@@ -1120,6 +1120,17 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
 .tv-chart-icon {
     font-size: 1.1rem;
 }
+.tv-login-hint {
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.3);
+    font-style: italic;
+    margin-left: 4px;
+    cursor: pointer;
+    transition: opacity 0.3s;
+}
+.tv-login-hint:hover { opacity: 0.6; }
+.tv-login-hint.hidden { display: none; }
 .tv-chart-fold-btn {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
@@ -1354,4 +1365,5 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     }
     .tv-chart-panel { height: 350px; flex-shrink: 0; }
     .tv-chart-title { font-size: 0.78rem; gap: 6px; }
+    .tv-login-hint { display: none; }
 }
