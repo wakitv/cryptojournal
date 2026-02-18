@@ -1397,11 +1397,10 @@ class CryptoTraderApp {
             hide_top_toolbar: false,
             hide_side_toolbar: false,
             allow_symbol_change: true,
-            details: true,
-            hotlist: true,
+            details: false,
+            hotlist: false,
             calendar: false,
-            hide_volume: false,
-            studies: ["STD;RSI"],
+            hide_volume: true,
             support_host: "https://www.tradingview.com"
         });
         widgetDiv.appendChild(script);
@@ -1591,10 +1590,13 @@ class CryptoTraderApp {
         if (!this.watchlistPairs || this.watchlistPairs.length === 0) return;
         
         try {
-            let prices = {};
+            let prices = {}, changes = {};
             if (cryptoAPI.isConfigured()) {
                 const result = await cryptoAPI.getLivePrices(this.watchlistPairs);
-                if (result.success) prices = result.prices || {};
+                if (result.success) {
+                    prices = result.prices || {};
+                    changes = result.changes || {};
+                }
             }
             
             this.watchlistPairs.forEach(pair => {
@@ -1606,13 +1608,15 @@ class CryptoTraderApp {
                     const price = parseFloat(prices[pair]);
                     priceEl.textContent = price >= 1 ? formatWithCommas(price) : price.toPrecision(4);
                     
-                    const prevPrice = this.prevWLPrices?.[pair];
-                    if (prevPrice && chgEl) {
-                        const chg = ((price - prevPrice) / prevPrice * 100);
+                    // Use real 24h change from OKX
+                    if (changes[pair] !== undefined && chgEl) {
+                        const chg = parseFloat(changes[pair]);
                         chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
                         chgEl.className = 'wl-chg ' + (chg >= 0 ? 'positive' : 'negative');
                     }
                     
+                    // Flash on price change
+                    const prevPrice = this.prevWLPrices?.[pair];
                     if (prevPrice && price !== prevPrice && priceEl) {
                         priceEl.classList.add('wl-flash');
                         setTimeout(() => priceEl.classList.remove('wl-flash'), 600);
