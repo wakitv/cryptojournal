@@ -104,8 +104,6 @@ class CryptoTraderApp {
         
         // TradingView Chart
         document.getElementById('tvChartToggle')?.addEventListener('click', () => this.toggleTVChart());
-        document.getElementById('tvPairSelect')?.addEventListener('change', () => this.loadTVChart());
-        document.getElementById('tvIntervalSelect')?.addEventListener('change', () => this.loadTVChart());
         
         // OKX Settings
         document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
@@ -1311,39 +1309,6 @@ class CryptoTraderApp {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
         
-        const pairSelect = document.getElementById('tvPairSelect');
-        if (!pairSelect) return;
-        
-        // Build pair list from: open positions + custom pairs + defaults
-        const pairSet = new Set();
-        const positions = this.data.positions || [];
-        positions.forEach(p => { if (p.pair) pairSet.add(p.pair); });
-        
-        const settings = getSettings();
-        const customPairs = settings.customPairs || [];
-        customPairs.forEach(p => pairSet.add(p));
-        
-        // Defaults
-        ['BTC/USDT','ETH/USDT','SOL/USDT','XRP/USDT','DOGE/USDT','ADA/USDT'].forEach(p => pairSet.add(p));
-        
-        // Populate dropdown
-        const currentVal = pairSelect.value;
-        pairSelect.innerHTML = '';
-        pairSet.forEach(pair => {
-            const opt = document.createElement('option');
-            opt.value = 'OKX:' + pair.replace('/', '');
-            opt.textContent = pair;
-            pairSelect.appendChild(opt);
-        });
-        
-        // Auto-select first open position's pair, or restore previous
-        if (positions.length > 0) {
-            const tvSymbol = 'OKX:' + positions[0].pair.replace('/', '');
-            pairSelect.value = tvSymbol;
-        } else if (currentVal) {
-            pairSelect.value = currentVal;
-        }
-        
         // Restore collapsed state
         const wrapper = document.getElementById('tvChartWrapper');
         const saved = localStorage.getItem('tvChartCollapsed');
@@ -1351,28 +1316,30 @@ class CryptoTraderApp {
             wrapper.classList.add('collapsed');
         }
         
-        // Only load if not already loaded with same symbol
-        const symbol = pairSelect.value;
+        // Auto-detect symbol from first open position
+        const positions = this.data.positions || [];
+        let symbol = 'OKX:BTCUSDT';
+        if (positions.length > 0 && positions[0].pair) {
+            symbol = 'OKX:' + positions[0].pair.replace('/', '');
+        }
+        
+        // Only reload if symbol changed or container is empty
         if (container.dataset.loadedSymbol !== symbol || !container.hasChildNodes()) {
             container.dataset.loadedSymbol = symbol;
-            this.loadTVChart();
+            this.loadTVChart(symbol);
         }
     }
     
-    loadTVChart() {
+    loadTVChart(symbol = 'OKX:BTCUSDT') {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
         
         const wrapper = document.getElementById('tvChartWrapper');
-        if (wrapper?.classList.contains('collapsed')) return; // Don't load if collapsed
-        
-        const symbol = document.getElementById('tvPairSelect')?.value || 'OKX:BTCUSDT';
-        const interval = document.getElementById('tvIntervalSelect')?.value || '15';
+        if (wrapper?.classList.contains('collapsed')) return;
         
         // Clear previous widget
         container.innerHTML = '';
         
-        // Create TradingView Advanced Chart widget
         const widgetDiv = document.createElement('div');
         widgetDiv.className = 'tradingview-widget-container';
         widgetDiv.style.height = '100%';
@@ -1391,7 +1358,7 @@ class CryptoTraderApp {
         script.textContent = JSON.stringify({
             autosize: true,
             symbol: symbol,
-            interval: interval,
+            interval: "15",
             timezone: "Etc/UTC",
             theme: "dark",
             style: "1",
@@ -1399,11 +1366,13 @@ class CryptoTraderApp {
             backgroundColor: "rgba(14, 14, 26, 1)",
             gridColor: "rgba(255, 255, 255, 0.03)",
             hide_top_toolbar: false,
-            hide_legend: false,
+            hide_side_toolbar: false,
             allow_symbol_change: true,
-            save_image: false,
+            details: true,
+            hotlist: true,
             calendar: false,
             hide_volume: false,
+            studies: ["STD;RSI"],
             support_host: "https://www.tradingview.com"
         });
         widgetDiv.appendChild(script);
@@ -1422,7 +1391,12 @@ class CryptoTraderApp {
         if (!isCollapsed) {
             const container = document.getElementById('tvChartContainer');
             if (container && !container.hasChildNodes()) {
-                setTimeout(() => this.loadTVChart(), 100);
+                const positions = this.data.positions || [];
+                let symbol = 'OKX:BTCUSDT';
+                if (positions.length > 0 && positions[0].pair) {
+                    symbol = 'OKX:' + positions[0].pair.replace('/', '');
+                }
+                setTimeout(() => this.loadTVChart(symbol), 100);
             }
         }
     }
