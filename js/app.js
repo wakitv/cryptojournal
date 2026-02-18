@@ -1328,6 +1328,12 @@ class CryptoTraderApp {
             container.dataset.loadedSymbol = symbol;
             this.loadTVChart(symbol);
         }
+        
+        // Load watchlist
+        const wlContainer = document.getElementById('tvWatchlistContainer');
+        if (wlContainer && !wlContainer.hasChildNodes()) {
+            this.loadTVWatchlist();
+        }
     }
     
     loadTVChart(symbol = 'OKX:BTCUSDT') {
@@ -1387,7 +1393,7 @@ class CryptoTraderApp {
         const isCollapsed = wrapper.classList.contains('collapsed');
         localStorage.setItem('tvChartCollapsed', isCollapsed);
         
-        // Load chart when expanding if container is empty
+        // Load chart + watchlist when expanding if containers are empty
         if (!isCollapsed) {
             const container = document.getElementById('tvChartContainer');
             if (container && !container.hasChildNodes()) {
@@ -1398,7 +1404,86 @@ class CryptoTraderApp {
                 }
                 setTimeout(() => this.loadTVChart(symbol), 100);
             }
+            const wlContainer = document.getElementById('tvWatchlistContainer');
+            if (wlContainer && !wlContainer.hasChildNodes()) {
+                setTimeout(() => this.loadTVWatchlist(), 100);
+            }
         }
+    }
+    
+    loadTVWatchlist() {
+        const container = document.getElementById('tvWatchlistContainer');
+        if (!container) return;
+        
+        const wrapper = document.getElementById('tvChartWrapper');
+        if (wrapper?.classList.contains('collapsed')) return;
+        
+        container.innerHTML = '';
+        
+        // Build watchlist from open positions + custom pairs
+        const symbols = [];
+        const positions = this.data.positions || [];
+        const addedPairs = new Set();
+        
+        positions.forEach(p => {
+            if (p.pair && !addedPairs.has(p.pair)) {
+                symbols.push('OKX:' + p.pair.replace('/', ''));
+                addedPairs.add(p.pair);
+            }
+        });
+        
+        const settings = getSettings();
+        (settings.customPairs || []).forEach(p => {
+            if (!addedPairs.has(p)) {
+                symbols.push('OKX:' + p.replace('/', ''));
+                addedPairs.add(p);
+            }
+        });
+        
+        // Defaults
+        ['BTC/USDT','ETH/USDT','SOL/USDT','XRP/USDT','DOGE/USDT','ADA/USDT','HBAR/USDT','SUI/USDT','PEPE/USDT'].forEach(p => {
+            if (!addedPairs.has(p)) {
+                symbols.push('OKX:' + p.replace('/', ''));
+                addedPairs.add(p);
+            }
+        });
+        
+        const widgetDiv = document.createElement('div');
+        widgetDiv.className = 'tradingview-widget-container';
+        widgetDiv.style.height = '100%';
+        widgetDiv.style.width = '100%';
+        
+        const innerDiv = document.createElement('div');
+        innerDiv.className = 'tradingview-widget-container__widget';
+        innerDiv.style.height = '100%';
+        innerDiv.style.width = '100%';
+        widgetDiv.appendChild(innerDiv);
+        
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js';
+        script.async = true;
+        script.textContent = JSON.stringify({
+            colorTheme: "dark",
+            dateRange: "1D",
+            showChart: false,
+            locale: "en",
+            largeChartUrl: "",
+            isTransparent: true,
+            showSymbolLogo: true,
+            showFloatingTooltip: true,
+            width: "100%",
+            height: "100%",
+            tabs: [
+                {
+                    title: "Watchlist",
+                    symbols: symbols.map(s => ({ s: s })),
+                    originalTitle: "Crypto"
+                }
+            ]
+        });
+        widgetDiv.appendChild(script);
+        container.appendChild(widgetDiv);
     }
     
     // ===== POSITION ACTIONS =====
