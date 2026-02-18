@@ -105,17 +105,6 @@ class CryptoTraderApp {
         // TradingView Chart
         document.getElementById('tvChartToggle')?.addEventListener('click', () => this.toggleTVChart());
         
-        // Dismiss login hint
-        const loginHint = document.getElementById('tvLoginHint');
-        if (loginHint) {
-            if (localStorage.getItem('tvHintDismissed') === 'true') loginHint.classList.add('hidden');
-            loginHint.addEventListener('click', (e) => {
-                e.stopPropagation();
-                loginHint.classList.add('hidden');
-                localStorage.setItem('tvHintDismissed', 'true');
-            });
-        }
-        
         // OKX Settings
         document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
         document.getElementById('okxTestBtn')?.addEventListener('click', () => this.testOKXConnection());
@@ -1439,6 +1428,23 @@ class CryptoTraderApp {
         });
         widgetDiv.appendChild(script);
         container.appendChild(widgetDiv);
+        
+        // Fix iframe sandbox to allow TradingView sign-in popup
+        setTimeout(() => {
+            const iframe = container.querySelector('iframe');
+            if (iframe) {
+                iframe.setAttribute('sandbox', 
+                    'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation');
+                iframe.setAttribute('allow', 'clipboard-write');
+            }
+        }, 2000);
+    }
+    
+    openInTradingView() {
+        const container = document.getElementById('tvChartContainer');
+        const symbol = container?.dataset.loadedSymbol || 'OKX:BTCUSDT.P';
+        // Open full TradingView chart — user can sign in there, all drawings saved to cloud
+        window.open('https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(symbol), '_blank');
     }
     
     switchTVSymbol(symbol) {
