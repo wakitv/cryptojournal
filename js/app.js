@@ -105,6 +105,17 @@ class CryptoTraderApp {
         // TradingView Chart
         document.getElementById('tvChartToggle')?.addEventListener('click', () => this.toggleTVChart());
         
+        // Dismiss login hint
+        const loginHint = document.getElementById('tvLoginHint');
+        if (loginHint) {
+            if (localStorage.getItem('tvHintDismissed') === 'true') loginHint.classList.add('hidden');
+            loginHint.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loginHint.classList.add('hidden');
+                localStorage.setItem('tvHintDismissed', 'true');
+            });
+        }
+        
         // OKX Settings
         document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
         document.getElementById('okxTestBtn')?.addEventListener('click', () => this.testOKXConnection());
@@ -1350,9 +1361,8 @@ class CryptoTraderApp {
             wrapper.classList.add('collapsed');
         }
         
-        // If chart already loaded, don't reset it (user may have selected a different pair)
-        if (container.hasChildNodes() && container.dataset.loadedSymbol) {
-            // Just reload watchlist for updated prices
+        // If chart already loaded, don't touch it — preserve drawings
+        if (container.querySelector('iframe')) {
             const wlContainer = document.getElementById('tvWatchlistContainer');
             if (wlContainer && !wlContainer.hasChildNodes()) {
                 this.loadTVWatchlist();
@@ -1360,7 +1370,7 @@ class CryptoTraderApp {
             return;
         }
         
-        // First load: use saved selection, then first position, then default
+        // First load only
         const savedSymbol = localStorage.getItem('tvChartSymbol');
         let symbol;
         if (savedSymbol) {
@@ -1373,7 +1383,7 @@ class CryptoTraderApp {
         }
         
         container.dataset.loadedSymbol = symbol;
-        this.loadTVChart(symbol);
+        this.createTVWidget(symbol);
         
         // Load watchlist
         const wlContainer = document.getElementById('tvWatchlistContainer');
@@ -1382,14 +1392,10 @@ class CryptoTraderApp {
         }
     }
     
-    loadTVChart(symbol = 'OKX:BTCUSDT.P') {
+    createTVWidget(symbol = 'OKX:BTCUSDT.P') {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
         
-        const wrapper = document.getElementById('tvChartWrapper');
-        if (wrapper?.classList.contains('collapsed')) return;
-        
-        // Clear previous widget
         container.innerHTML = '';
         
         const widgetDiv = document.createElement('div');
@@ -1420,14 +1426,43 @@ class CryptoTraderApp {
             hide_top_toolbar: false,
             hide_side_toolbar: false,
             allow_symbol_change: true,
+            save_image: true,
             details: false,
             hotlist: false,
             calendar: false,
             hide_volume: true,
+            withdateranges: true,
+            show_popup_button: true,
+            popup_width: "1000",
+            popup_height: "650",
             support_host: "https://www.tradingview.com"
         });
         widgetDiv.appendChild(script);
         container.appendChild(widgetDiv);
+    }
+    
+    switchTVSymbol(symbol) {
+        const container = document.getElementById('tvChartContainer');
+        if (!container) return;
+        
+        const iframe = container.querySelector('iframe');
+        if (iframe && iframe.src) {
+            // Update iframe src with new symbol — iframe's localStorage persists (same domain)
+            // so TradingView saves drawings per symbol and they survive switching
+            try {
+                const url = new URL(iframe.src);
+                url.searchParams.set('symbol', symbol);
+                iframe.src = url.toString();
+            } catch (e) {
+                // Fallback: recreate widget
+                this.createTVWidget(symbol);
+            }
+        } else {
+            this.createTVWidget(symbol);
+        }
+        
+        container.dataset.loadedSymbol = symbol;
+        localStorage.setItem('tvChartSymbol', symbol);
     }
     
     toggleTVChart() {
@@ -1438,16 +1473,19 @@ class CryptoTraderApp {
         const isCollapsed = wrapper.classList.contains('collapsed');
         localStorage.setItem('tvChartCollapsed', isCollapsed);
         
-        // Load chart + watchlist when expanding if containers are empty
+        // Load chart + watchlist when expanding if not yet created
         if (!isCollapsed) {
             const container = document.getElementById('tvChartContainer');
-            if (container && !container.hasChildNodes()) {
-                const positions = this.data.positions || [];
-                let symbol = this.getTVSymbol('BTC/USDT');
-                if (positions.length > 0 && positions[0].pair) {
-                    symbol = this.getTVSymbol(positions[0].pair);
+            if (container && !container.querySelector('iframe')) {
+                const savedSymbol = localStorage.getItem('tvChartSymbol');
+                let symbol = savedSymbol || this.getTVSymbol('BTC/USDT');
+                if (!savedSymbol) {
+                    const positions = this.data.positions || [];
+                    if (positions.length > 0 && positions[0].pair) {
+                        symbol = this.getTVSymbol(positions[0].pair);
+                    }
                 }
-                setTimeout(() => this.loadTVChart(symbol), 100);
+                setTimeout(() => this.createTVWidget(symbol), 100);
             }
             const wlContainer = document.getElementById('tvWatchlistContainer');
             if (wlContainer && !wlContainer.hasChildNodes()) {
@@ -1558,19 +1596,14 @@ class CryptoTraderApp {
             </div>
         `;
         
-        // Click row → change chart
+        // Click row → change chart symbol (without recreating widget)
         container.querySelectorAll('.wl-row').forEach(row => {
             row.addEventListener('click', (e) => {
                 if (e.target.classList.contains('wl-del') || e.target.classList.contains('wl-tag')) return;
                 const symbol = row.dataset.symbol;
                 container.querySelectorAll('.wl-row').forEach(r => r.classList.remove('active'));
                 row.classList.add('active');
-                localStorage.setItem('tvChartSymbol', symbol);
-                const chartContainer = document.getElementById('tvChartContainer');
-                if (chartContainer) {
-                    chartContainer.dataset.loadedSymbol = symbol;
-                    this.loadTVChart(symbol);
-                }
+                this.switchTVSymbol(symbol);
             });
         });
         
