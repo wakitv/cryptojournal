@@ -102,9 +102,6 @@ class CryptoTraderApp {
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
         document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
         
-        // TradingView Chart
-        document.getElementById('tvChartToggle')?.addEventListener('click', () => this.toggleTVChart());
-        
         // OKX Settings
         document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
         document.getElementById('okxTestBtn')?.addEventListener('click', () => this.testOKXConnection());
@@ -149,7 +146,7 @@ class CryptoTraderApp {
             case 'positions': 
                 this.renderPositionsTab();
                 this.startPriceAutoRefresh();
-                this.initTVChart();
+                this.initWatchlist();
                 break;
             case 'strategies': this.renderStrategiesTab(); break;
             case 'reminders': this.renderRemindersTab(); break;
@@ -1271,7 +1268,7 @@ class CryptoTraderApp {
                 <div class="position-card ${getValueClass(upnl)}">
                     <div class="position-header">
                         <div class="position-pair">
-                            <span style="color:${getPairColor(p.pair)};font-weight:800;font-size:1.1rem">${p.pair}</span>
+                            <span class="pair-link" onclick="app.openTVChart('${p.pair}')" style="color:${getPairColor(p.pair)};font-weight:800;font-size:1.1rem;cursor:pointer">${p.pair}</span>
                             <span class="type-badge ${p.type.toLowerCase()}">${p.type}</span>
                             ${leverBadge}
                             ${isOKX ? '<span class="okx-badge">OKX</span>' : ''}
@@ -1339,426 +1336,25 @@ class CryptoTraderApp {
         return true;
     }
     
-    initTVChart() {
-        const wrapper = document.getElementById('tvChartWrapper');
-        if (!wrapper) return;
-        
-        const saved = localStorage.getItem('tvChartCollapsed');
-        if (saved === 'true') wrapper.classList.add('collapsed');
-        
-        // Already initialized?
-        if (this.lwChart) {
-            const wlContainer = document.getElementById('tvWatchlistContainer');
-            if (wlContainer && !wlContainer.hasChildNodes()) this.loadTVWatchlist();
-            return;
-        }
-        
-        if (wrapper.classList.contains('collapsed')) {
-            const wlContainer = document.getElementById('tvWatchlistContainer');
-            if (wlContainer && !wlContainer.hasChildNodes()) this.loadTVWatchlist();
-            return;
-        }
-        
-        // Determine symbol
-        const savedPair = localStorage.getItem('tvChartPair');
-        let pair;
-        if (savedPair) {
-            pair = savedPair;
-        } else {
-            const positions = this.data.positions || [];
-            pair = (positions.length > 0 && positions[0].pair) ? positions[0].pair : 'BTC/USDT';
-        }
-        
-        this.chartCurrentPair = pair;
-        this.chartInterval = localStorage.getItem('tvChartInterval') || '15m';
-        this.chartDrawingTool = 'crosshair';
-        this.chartDrawingState = null; // for multi-click tools
-        
-        this.createLWChart();
-        this.loadCandles(pair, this.chartInterval);
-        this.setupChartToolbar();
-        
-        const wlContainer = document.getElementById('tvWatchlistContainer');
-        if (wlContainer && !wlContainer.hasChildNodes()) this.loadTVWatchlist();
-    }
-    
-    createLWChart() {
-        const el = document.getElementById('lwChart');
-        if (!el || this.lwChart) return;
-        
-        this.lwChart = LightweightCharts.createChart(el, {
-            width: el.clientWidth,
-            height: el.clientHeight,
-            layout: { 
-                background: { type: 'solid', color: '#0e0e1a' },
-                textColor: 'rgba(255,255,255,0.5)',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 11
-            },
-            grid: {
-                vertLines: { color: 'rgba(255,255,255,0.03)' },
-                horzLines: { color: 'rgba(255,255,255,0.03)' }
-            },
-            crosshair: {
-                mode: LightweightCharts.CrosshairMode.Normal,
-                vertLine: { color: 'rgba(255,255,255,0.15)', style: 2 },
-                horzLine: { color: 'rgba(255,255,255,0.15)', style: 2 }
-            },
-            rightPriceScale: {
-                borderColor: 'rgba(255,255,255,0.08)',
-                scaleMargins: { top: 0.1, bottom: 0.1 }
-            },
-            timeScale: {
-                borderColor: 'rgba(255,255,255,0.08)',
-                timeVisible: true,
-                secondsVisible: false
-            },
-            handleScale: { axisPressedMouseMove: { time: true, price: true } },
-            handleScroll: { mouseWheel: true, pressedMouseMove: true }
-        });
-        
-        this.lwCandleSeries = this.lwChart.addCandlestickSeries({
-            upColor: '#22c55e',
-            downColor: '#ef4444',
-            borderUpColor: '#22c55e',
-            borderDownColor: '#ef4444',
-            wickUpColor: '#22c55e',
-            wickDownColor: '#ef4444'
-        });
-        
-        // Resize observer
-        this._chartResizeObs = new ResizeObserver(() => {
-            if (this.lwChart && el.clientWidth > 0 && el.clientHeight > 0) {
-                this.lwChart.resize(el.clientWidth, el.clientHeight);
-                this.renderDrawings();
-            }
-        });
-        this._chartResizeObs.observe(el);
-        
-        // Re-render drawings on scroll/zoom
-        this.lwChart.timeScale().subscribeVisibleLogicalRangeChange(() => this.renderDrawings());
-        
-        // Drawing click handler
-        const overlay = document.getElementById('drawingOverlay');
-        if (overlay) {
-            overlay.addEventListener('click', (e) => this.handleDrawingClick(e));
-            overlay.addEventListener('mousemove', (e) => this.handleDrawingMove(e));
-            overlay.addEventListener('contextmenu', (e) => { e.preventDefault(); this.handleDrawingRightClick(e); });
+    initWatchlist() {
+        const container = document.getElementById('tvWatchlistContainer');
+        if (!container) return;
+        if (!container.hasChildNodes()) {
+            this.loadTVWatchlist();
         }
     }
     
-    async loadCandles(pair, interval) {
-        if (!this.isOKXPair(pair)) {
-            this.showToast('No candle data for ' + pair, 'warning');
-            return;
-        }
-        
-        const el = document.getElementById('lwChart');
-        if (el) el.style.opacity = '0.5';
-        
-        try {
-            const result = await cryptoAPI.getCandles(pair, interval, 300);
-            if (result.success && result.candles && result.candles.length > 0) {
-                this.lwCandleSeries.setData(result.candles);
-                this.chartCurrentPair = pair;
-                this.chartInterval = interval;
-                localStorage.setItem('tvChartPair', pair);
-                localStorage.setItem('tvChartInterval', interval);
-                // Also store loadedSymbol for watchlist highlight
-                const container = document.getElementById('tvChartContainer');
-                if (container) container.dataset.loadedSymbol = this.getTVSymbol(pair);
-                this.loadDrawings();
-                this.renderDrawings();
-                
-                // Auto-refresh candles every 30s
-                if (this._candleRefresh) clearInterval(this._candleRefresh);
-                this._candleRefresh = setInterval(() => this.refreshLatestCandle(), 30000);
-            } else {
-                this.showToast('No candle data for ' + pair, 'warning');
-            }
-        } catch (e) {
-            console.warn('Candle load error:', e);
-        }
-        
-        if (el) el.style.opacity = '1';
-    }
-    
-    async refreshLatestCandle() {
-        if (!this.chartCurrentPair || !this.lwCandleSeries) return;
-        try {
-            const result = await cryptoAPI.getCandles(this.chartCurrentPair, this.chartInterval, 2);
-            if (result.success && result.candles) {
-                result.candles.forEach(c => this.lwCandleSeries.update(c));
-            }
-        } catch (e) { /* silent */ }
-    }
-    
-    setupChartToolbar() {
-        // Interval buttons
-        document.querySelectorAll('#chartIntervals button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('#chartIntervals button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const interval = btn.dataset.interval;
-                this.loadCandles(this.chartCurrentPair, interval);
-            });
-        });
-        // Set active interval
-        const activeInt = document.querySelector(`#chartIntervals button[data-interval="${this.chartInterval}"]`);
-        if (activeInt) {
-            document.querySelectorAll('#chartIntervals button').forEach(b => b.classList.remove('active'));
-            activeInt.classList.add('active');
-        }
-        
-        // Tool buttons
-        document.querySelectorAll('#chartTools button[data-tool]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const tool = btn.dataset.tool;
-                if (tool === 'delete') {
-                    this.deleteAllDrawings();
-                    return;
-                }
-                document.querySelectorAll('#chartTools button[data-tool]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.chartDrawingTool = tool;
-                this.chartDrawingState = null;
-                const overlay = document.getElementById('drawingOverlay');
-                if (overlay) {
-                    overlay.classList.toggle('active', tool !== 'crosshair');
-                }
-                // Update chart crosshair
-                if (this.lwChart) {
-                    this.lwChart.applyOptions({
-                        crosshair: {
-                            mode: tool === 'crosshair' 
-                                ? LightweightCharts.CrosshairMode.Normal 
-                                : LightweightCharts.CrosshairMode.Magnet
-                        }
-                    });
-                }
-            });
-        });
-    }
-    
-    // ---- Drawing System ----
-    getChartCoords(e) {
-        const el = document.getElementById('lwChart');
-        if (!el || !this.lwChart || !this.lwCandleSeries) return null;
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const time = this.lwChart.timeScale().coordinateToTime(x);
-        const price = this.lwCandleSeries.coordinateToPrice(y);
-        if (time === null || price === null) return null;
-        return { x, y, time, price };
-    }
-    
-    handleDrawingClick(e) {
-        const coords = this.getChartCoords(e);
-        if (!coords) return;
-        
-        if (this.chartDrawingTool === 'hline') {
-            this.addDrawing({ type: 'hline', price: coords.price, color: '#22c55e' });
-            // Auto-switch back to crosshair
-            this.selectTool('crosshair');
-        } else if (this.chartDrawingTool === 'trendline') {
-            if (!this.chartDrawingState) {
-                this.chartDrawingState = { p1: { time: coords.time, price: coords.price } };
-            } else {
-                this.addDrawing({
-                    type: 'trendline',
-                    p1: this.chartDrawingState.p1,
-                    p2: { time: coords.time, price: coords.price },
-                    color: '#f59e0b'
-                });
-                this.chartDrawingState = null;
-                this.selectTool('crosshair');
-            }
-        }
-    }
-    
-    handleDrawingMove(e) {
-        if (this.chartDrawingTool !== 'trendline' || !this.chartDrawingState) return;
-        const coords = this.getChartCoords(e);
-        if (!coords) return;
-        this.renderDrawings(coords); // pass preview endpoint
-    }
-    
-    handleDrawingRightClick(e) {
-        // Right-click → delete closest drawing
-        const coords = this.getChartCoords(e);
-        if (!coords) return;
-        const key = this.getDrawingKey();
-        let drawings = JSON.parse(localStorage.getItem('chartDrawings') || '{}');
-        let list = drawings[key] || [];
-        if (list.length === 0) return;
-        
-        // Find closest drawing
-        let closestIdx = -1, closestDist = Infinity;
-        list.forEach((d, i) => {
-            let dist;
-            if (d.type === 'hline') {
-                dist = Math.abs(d.price - coords.price);
-            } else if (d.type === 'trendline') {
-                const d1 = Math.abs(d.p1.price - coords.price) + Math.abs(d.p1.time - coords.time);
-                const d2 = Math.abs(d.p2.price - coords.price) + Math.abs(d.p2.time - coords.time);
-                dist = Math.min(d1, d2);
-            }
-            if (dist < closestDist) { closestDist = dist; closestIdx = i; }
-        });
-        if (closestIdx >= 0) {
-            list.splice(closestIdx, 1);
-            drawings[key] = list;
-            localStorage.setItem('chartDrawings', JSON.stringify(drawings));
-            this.renderDrawings();
-            this.showToast('Drawing deleted', 'info');
-        }
-    }
-    
-    selectTool(tool) {
-        this.chartDrawingTool = tool;
-        this.chartDrawingState = null;
-        document.querySelectorAll('#chartTools button[data-tool]').forEach(b => b.classList.remove('active'));
-        document.querySelector(`#chartTools button[data-tool="${tool}"]`)?.classList.add('active');
-        const overlay = document.getElementById('drawingOverlay');
-        if (overlay) overlay.classList.toggle('active', tool !== 'crosshair');
-        if (this.lwChart) {
-            this.lwChart.applyOptions({
-                crosshair: { mode: tool === 'crosshair' ? LightweightCharts.CrosshairMode.Normal : LightweightCharts.CrosshairMode.Magnet }
-            });
-        }
-    }
-    
-    getDrawingKey() {
-        return (this.chartCurrentPair || 'BTC/USDT') + '_' + (this.chartInterval || '15m');
-    }
-    
-    addDrawing(drawing) {
-        drawing.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-        const key = this.getDrawingKey();
-        let drawings = JSON.parse(localStorage.getItem('chartDrawings') || '{}');
-        if (!drawings[key]) drawings[key] = [];
-        drawings[key].push(drawing);
-        localStorage.setItem('chartDrawings', JSON.stringify(drawings));
-        this.renderDrawings();
-    }
-    
-    loadDrawings() {
-        // Just triggers a re-render from localStorage
-        this.renderDrawings();
-    }
-    
-    deleteAllDrawings() {
-        const key = this.getDrawingKey();
-        let drawings = JSON.parse(localStorage.getItem('chartDrawings') || '{}');
-        if (drawings[key] && drawings[key].length > 0) {
-            drawings[key] = [];
-            localStorage.setItem('chartDrawings', JSON.stringify(drawings));
-            this.renderDrawings();
-            this.showToast('All drawings cleared', 'info');
-        }
-    }
-    
-    renderDrawings(previewCoords) {
-        const overlay = document.getElementById('drawingOverlay');
-        if (!overlay || !this.lwChart || !this.lwCandleSeries) return;
-        
-        const el = document.getElementById('lwChart');
-        if (!el) return;
-        const w = el.clientWidth, h = el.clientHeight;
-        overlay.setAttribute('viewBox', `0 0 ${w} ${h}`);
-        overlay.setAttribute('width', w);
-        overlay.setAttribute('height', h);
-        
-        let html = '';
-        const key = this.getDrawingKey();
-        const drawings = JSON.parse(localStorage.getItem('chartDrawings') || '{}');
-        const list = drawings[key] || [];
-        
-        const ts = this.lwChart.timeScale();
-        const series = this.lwCandleSeries;
-        
-        list.forEach(d => {
-            if (d.type === 'hline') {
-                const y = series.priceToCoordinate(d.price);
-                if (y === null || y < 0 || y > h) return;
-                // Hitbox for right-click delete
-                html += `<line class="drawing-hitbox" x1="0" y1="${y}" x2="${w}" y2="${y}"/>`;
-                html += `<line class="drawing-hline" x1="0" y1="${y}" x2="${w}" y2="${y}" style="stroke:${d.color || '#22c55e'}"/>`;
-                html += `<text class="drawing-label" x="4" y="${y - 4}">${d.price.toFixed(d.price >= 1 ? 2 : 6)}</text>`;
-            } else if (d.type === 'trendline') {
-                const x1 = ts.timeToCoordinate(d.p1.time);
-                const y1 = series.priceToCoordinate(d.p1.price);
-                const x2 = ts.timeToCoordinate(d.p2.time);
-                const y2 = series.priceToCoordinate(d.p2.price);
-                if (x1 === null || y1 === null || x2 === null || y2 === null) return;
-                html += `<line class="drawing-hitbox" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
-                html += `<line class="drawing-line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${d.color || '#f59e0b'}"/>`;
-            }
-        });
-        
-        // Preview line for trendline in progress
-        if (this.chartDrawingTool === 'trendline' && this.chartDrawingState && previewCoords) {
-            const p1 = this.chartDrawingState.p1;
-            const x1 = ts.timeToCoordinate(p1.time);
-            const y1 = series.priceToCoordinate(p1.price);
-            if (x1 !== null && y1 !== null) {
-                html += `<line class="drawing-preview" x1="${x1}" y1="${y1}" x2="${previewCoords.x}" y2="${previewCoords.y}"/>`;
-            }
-        }
-        
-        overlay.innerHTML = html;
-    }
-    
-    switchTVSymbol(pairOrSymbol) {
-        // Resolve pair from TV symbol if needed
-        let pair = pairOrSymbol;
-        if (pairOrSymbol.includes(':')) {
-            // Extract pair from TV symbol like "OKX:BTCUSDT.P"
-            const sym = pairOrSymbol.split(':')[1].replace('.P', '');
-            // Try to find the matching watchlist pair
-            const found = (this.watchlistPairs || []).find(p => p.replace('/', '') === sym);
-            pair = found || pairOrSymbol;
-        }
-        
-        if (this.isOKXPair(pair)) {
-            this.loadCandles(pair, this.chartInterval);
-        } else {
-            // Non-OKX pair - just update the stored symbol for watchlist highlight
-            const container = document.getElementById('tvChartContainer');
-            if (container) container.dataset.loadedSymbol = this.getTVSymbol(pair);
-            localStorage.setItem('tvChartSymbol', this.getTVSymbol(pair));
-            this.showToast('Chart: no candle data for ' + pair, 'warning');
-        }
-    }
-    
-    toggleTVChart() {
-        const wrapper = document.getElementById('tvChartWrapper');
-        if (!wrapper) return;
-        
-        wrapper.classList.toggle('collapsed');
-        const isCollapsed = wrapper.classList.contains('collapsed');
-        localStorage.setItem('tvChartCollapsed', isCollapsed);
-        
-        if (!isCollapsed) {
-            if (!this.lwChart) {
-                this.chartCurrentPair = localStorage.getItem('tvChartPair') || 'BTC/USDT';
-                this.chartInterval = localStorage.getItem('tvChartInterval') || '15m';
-                this.chartDrawingTool = 'crosshair';
-                this.chartDrawingState = null;
-                setTimeout(() => {
-                    this.createLWChart();
-                    this.loadCandles(this.chartCurrentPair, this.chartInterval);
-                    this.setupChartToolbar();
-                }, 150);
-            }
-            const wlContainer = document.getElementById('tvWatchlistContainer');
-            if (wlContainer && !wlContainer.hasChildNodes()) {
-                setTimeout(() => this.loadTVWatchlist(), 100);
-            }
-        }
+    openTVChart(pair) {
+        const symbol = this.getTVSymbol(pair);
+        const w = Math.min(1200, screen.width - 100);
+        const h = Math.min(800, screen.height - 100);
+        const left = (screen.width - w) / 2;
+        const top = (screen.height - h) / 2;
+        window.open(
+            'https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(symbol),
+            'tv_chart',
+            'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',scrollbars=yes,resizable=yes'
+        );
     }
     
     loadTVWatchlist() {
@@ -1863,14 +1459,14 @@ class CryptoTraderApp {
             </div>
         `;
         
-        // Click row → change chart symbol (without recreating widget)
+        // Click row → open TradingView popup
         container.querySelectorAll('.wl-row').forEach(row => {
             row.addEventListener('click', (e) => {
                 if (e.target.classList.contains('wl-del') || e.target.classList.contains('wl-tag')) return;
-                const symbol = row.dataset.symbol;
+                const pair = row.dataset.pair;
                 container.querySelectorAll('.wl-row').forEach(r => r.classList.remove('active'));
                 row.classList.add('active');
-                this.switchTVSymbol(symbol);
+                this.openTVChart(pair);
             });
         });
         
@@ -1953,12 +1549,6 @@ class CryptoTraderApp {
                     }
                 });
             });
-        }
-        
-        // Highlight current chart pair
-        const currentSymbol = document.getElementById('tvChartContainer')?.dataset.loadedSymbol;
-        if (currentSymbol) {
-            container.querySelector(`.wl-row[data-symbol="${currentSymbol}"]`)?.classList.add('active');
         }
         
         // Add pair UI
