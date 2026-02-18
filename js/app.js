@@ -1309,6 +1309,25 @@ class CryptoTraderApp {
     
     // ===== TRADINGVIEW CHART =====
     
+    // Convert pair to TradingView symbol with smart fallback
+    getTVSymbol(pair) {
+        const base = pair.split('/')[0];
+        const key = pair.replace('/', '');
+        
+        // Special commodity/forex pairs that need different TradingView source
+        const specialMap = {
+            'XAU/USDT': 'PEPPERSTONE:XAUUSD',
+            'XAG/USDT': 'PEPPERSTONE:XAGUSD',
+            'XAU/USD': 'PEPPERSTONE:XAUUSD',
+            'XAG/USD': 'PEPPERSTONE:XAGUSD',
+        };
+        
+        if (specialMap[pair]) return specialMap[pair];
+        
+        // Standard crypto — use OKX perpetual swap format
+        return 'OKX:' + key + '.P';
+    }
+    
     initTVChart() {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
@@ -1322,9 +1341,9 @@ class CryptoTraderApp {
         
         // Auto-detect symbol from first open position
         const positions = this.data.positions || [];
-        let symbol = 'OKX:BTCUSDT';
+        let symbol = this.getTVSymbol('BTC/USDT');
         if (positions.length > 0 && positions[0].pair) {
-            symbol = 'OKX:' + positions[0].pair.replace('/', '');
+            symbol = this.getTVSymbol(positions[0].pair);
         }
         
         // Only reload if symbol changed or container is empty
@@ -1340,7 +1359,7 @@ class CryptoTraderApp {
         }
     }
     
-    loadTVChart(symbol = 'OKX:BTCUSDT') {
+    loadTVChart(symbol = 'OKX:BTCUSDT.P') {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
         
@@ -1402,9 +1421,9 @@ class CryptoTraderApp {
             const container = document.getElementById('tvChartContainer');
             if (container && !container.hasChildNodes()) {
                 const positions = this.data.positions || [];
-                let symbol = 'OKX:BTCUSDT';
+                let symbol = this.getTVSymbol('BTC/USDT');
                 if (positions.length > 0 && positions[0].pair) {
-                    symbol = 'OKX:' + positions[0].pair.replace('/', '');
+                    symbol = this.getTVSymbol(positions[0].pair);
                 }
                 setTimeout(() => this.loadTVChart(symbol), 100);
             }
@@ -1470,10 +1489,11 @@ class CryptoTraderApp {
             <div class="wl-list" id="wlList">
                 ${pairs.map(p => {
                     const key = p.replace('/', '');
+                    const tvSymbol = this.getTVSymbol(p);
                     const base = p.split('/')[0];
                     const isPosition = positions.some(pos => pos.pair === p);
                     return `
-                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}" data-pair="${p}" data-symbol="OKX:${key}">
+                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}" data-pair="${p}" data-symbol="${tvSymbol}">
                         <span class="wl-symbol">${base}<small>/${p.split('/')[1]}</small></span>
                         <span class="wl-price" id="wlp-${key}">—</span>
                         <span class="wl-chg" id="wlc-${key}">—</span>
