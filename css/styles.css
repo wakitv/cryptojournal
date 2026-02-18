@@ -1165,7 +1165,141 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     height: 100%;
     border-left: 1px solid var(--border);
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(14,14,26,0.95);
+    overflow: hidden;
 }
+/* Watchlist UI */
+.wl-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+.wl-title {
+    font-weight: 800;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    letter-spacing: 0.3px;
+}
+.wl-add-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    color: var(--cyan);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.wl-add-btn:hover { background: rgba(0,200,255,0.1); border-color: var(--cyan); }
+.wl-add-row {
+    display: flex;
+    gap: 6px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,200,255,0.03);
+}
+.wl-add-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    outline: none;
+    text-transform: uppercase;
+}
+.wl-add-input:focus { border-color: var(--cyan); }
+.wl-add-confirm {
+    background: var(--cyan);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    width: 30px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.wl-add-confirm:hover { opacity: 0.85; }
+.wl-table-header {
+    display: grid;
+    grid-template-columns: 1fr 80px 60px 22px;
+    padding: 6px 12px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.wl-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.wl-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 60px 22px;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+    transition: background 0.15s;
+}
+.wl-row:hover { background: rgba(255,255,255,0.04); }
+.wl-row.active { background: rgba(0,200,255,0.08); border-left: 2px solid var(--cyan); }
+.wl-row.wl-has-pos { border-left: 2px solid var(--gold); }
+.wl-row.active.wl-has-pos { border-left: 2px solid var(--cyan); }
+.wl-symbol {
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: var(--text-primary);
+}
+.wl-symbol small {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.65rem;
+}
+.wl-price {
+    font-family: 'SF Mono', monospace;
+    font-size: 0.73rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+    transition: color 0.3s;
+}
+.wl-price.wl-flash { color: var(--cyan); }
+.wl-chg {
+    font-family: 'SF Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-align: right;
+    color: var(--text-muted);
+}
+.wl-chg.positive { color: var(--green); }
+.wl-chg.negative { color: var(--red); }
+.wl-del {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    opacity: 0;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+}
+.wl-row:hover .wl-del { opacity: 0.5; }
+.wl-del:hover { opacity: 1 !important; color: var(--red); }
 .tv-chart-wrapper.collapsed .tv-chart-body {
     height: 0;
     opacity: 0;
@@ -1179,6 +1313,6 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
         border-left: none;
         border-top: 1px solid var(--border);
     }
-    .tv-chart-panel { height: 350px; }
+    .tv-chart-panel { height: 350px; flex-shrink: 0; }
     .tv-chart-title { font-size: 0.78rem; gap: 6px; }
 }
