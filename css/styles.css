@@ -1120,26 +1120,6 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
 .tv-chart-icon {
     font-size: 1.1rem;
 }
-.tv-pair-select, .tv-interval-select {
-    background: rgba(255,255,255,0.06);
-    color: var(--cyan);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s;
-}
-.tv-pair-select:hover, .tv-interval-select:hover {
-    border-color: var(--cyan);
-    background: rgba(0,200,255,0.08);
-}
-.tv-pair-select option, .tv-interval-select option {
-    background: #1a1a2e;
-    color: #fff;
-}
 .tv-chart-fold-btn {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
@@ -1165,7 +1145,7 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     border-bottom: none;
 }
 .tv-chart-body {
-    height: 450px;
+    height: 520px;
     overflow: hidden;
     transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
     opacity: 1;
@@ -1175,7 +1155,6 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     opacity: 0;
 }
 @media (max-width: 768px) {
-    .tv-chart-body { height: 350px; }
+    .tv-chart-body { height: 400px; }
     .tv-chart-title { font-size: 0.78rem; gap: 6px; }
-    .tv-pair-select, .tv-interval-select { padding: 3px 6px; font-size: 0.7rem; }
 }
