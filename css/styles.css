@@ -1300,6 +1300,22 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
 }
 .wl-row:hover .wl-del { opacity: 0.5; }
 .wl-del:hover { opacity: 1 !important; color: var(--red); }
+.wl-tv-only .wl-symbol { color: var(--text-secondary); }
+.wl-tv-tag {
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #2962ff;
+    background: rgba(41,98,255,0.12);
+    padding: 1px 4px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+}
+.wl-exchange {
+    display: block;
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
 .tv-chart-wrapper.collapsed .tv-chart-body {
     height: 0;
     opacity: 0;
