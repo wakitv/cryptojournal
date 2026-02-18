@@ -171,7 +171,7 @@
                     <h2 class="page-title">Open Positions</h2>
                 </div>
 
-                <!-- TradingView Chart + Watchlist (Collapsible) -->
+                <!-- Chart + Watchlist (Collapsible) -->
                 <div class="tv-chart-wrapper" id="tvChartWrapper">
                     <div class="tv-chart-header" id="tvChartToggle">
                         <div class="tv-chart-title">
@@ -179,12 +179,29 @@
                             <span>Trading Chart</span>
                         </div>
                         <div class="tv-chart-actions">
+                            <div class="chart-intervals" id="chartIntervals">
+                                <button data-interval="15m" class="active">15m</button>
+                                <button data-interval="1H">1H</button>
+                                <button data-interval="4H">4H</button>
+                                <button data-interval="1D">1D</button>
+                            </div>
+                            <div class="chart-tools" id="chartTools">
+                                <button data-tool="crosshair" class="active" title="Crosshair">✛</button>
+                                <button data-tool="hline" title="Horizontal Line">━</button>
+                                <button data-tool="trendline" title="Trend Line">╱</button>
+                                <button data-tool="delete" title="Delete All Drawings" id="chartDeleteAll">🗑</button>
+                            </div>
                             <button class="tv-chart-fold-btn" id="tvFoldBtn">▼</button>
                         </div>
                     </div>
                     <div class="tv-chart-body" id="tvChartBody">
                         <div class="tv-split-layout">
-                            <div class="tv-chart-panel" id="tvChartContainer"></div>
+                            <div class="tv-chart-panel" id="tvChartContainer">
+                                <div id="lwChartWrap" style="width:100%;height:100%;position:relative;">
+                                    <div id="lwChart" style="width:100%;height:100%;"></div>
+                                    <svg id="drawingOverlay" class="drawing-overlay"></svg>
+                                </div>
+                            </div>
                             <div class="tv-watchlist-panel" id="tvWatchlistContainer"></div>
                         </div>
                     </div>
@@ -416,18 +433,9 @@
                 </div>
 
                 <div class="settings-section">
-                    <h4 class="settings-section-title">📊 TradingView (Chart Drawings)</h4>
-                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">Sign in to your TradingView account to save all drawings, indicators, and chart layouts permanently. Free account works.</p>
-                    <div id="tvSignInStatus" class="tv-signin-status">
-                        <span class="tv-signin-dot"></span>
-                        <span class="tv-signin-text">Not signed in — drawings won't persist</span>
-                    </div>
-                    <button class="btn-sm tv-signin-btn" id="tvSignInBtn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                        Sign in to TradingView
-                    </button>
-                    <p style="font-size:0.65rem;color:var(--text-muted);margin-top:10px">After signing in, click "Refresh Chart" to apply your session. Your trend lines, Fibonacci, indicators — everything saves to your TradingView cloud.</p>
-                    <button class="btn-sm secondary" id="tvRefreshChartBtn" style="margin-top:8px">🔄 Refresh Chart</button>
+                    <h4 class="settings-section-title">📊 Chart Drawings</h4>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:8px">Drawings are saved automatically per symbol and timeframe. Use the toolbar above the chart to draw horizontal lines and trend lines.</p>
+                    <p style="font-size:0.7rem;color:var(--text-muted)">• <b>Horizontal Line</b> — click ━ then click on chart<br>• <b>Trend Line</b> — click ╱ then click two points<br>• <b>Right-click</b> a drawing to delete it<br>• <b>🗑</b> clears all drawings for current symbol</p>
                 </div>
             </div>
             <div class="settings-footer"><button class="btn-secondary" id="settingsCancel">Cancel</button><button class="btn-primary" id="settingsSave">Save Settings</button></div>
@@ -437,6 +445,7 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
