@@ -89,8 +89,6 @@ class CryptoTraderApp {
         document.getElementById('removeWallpaper')?.addEventListener('click', () => this.handleRemoveWallpaper());
         document.getElementById('iconUpload')?.addEventListener('change', (e) => this.handleIconUpload(e));
         document.getElementById('resetIcon')?.addEventListener('click', () => this.handleResetIcon());
-        document.getElementById('addPairBtn')?.addEventListener('click', () => this.handleAddPair());
-        document.getElementById('newPairInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleAddPair(); });
         document.getElementById('tradeScreenshot')?.addEventListener('change', (e) => this.handleTradeScreenshot(e));
         document.getElementById('tradeScreenshotRemove')?.addEventListener('click', () => this.removeTradeScreenshot());
         
@@ -2333,9 +2331,6 @@ class CryptoTraderApp {
         const iconEl = document.getElementById('iconPreview');
         iconEl.src = settings.customIcon || 'assets/logo.png';
         
-        // Custom pairs list
-        this.renderCustomPairs();
-        
         // OKX auto-sync setting
         const okxAutoSync = document.getElementById('okxAutoSync');
         if (okxAutoSync) okxAutoSync.checked = settings.okxAutoSync || false;
@@ -2500,68 +2495,6 @@ class CryptoTraderApp {
         document.getElementById('iconPreview').src = 'assets/logo.png';
         this.applyCustomizations();
         this.showToast('Icon reset to default', 'info');
-    }
-    
-    // ===== CUSTOM PAIRS =====
-    
-    handleAddPair() {
-        const input = document.getElementById('newPairInput');
-        if (!input) return;
-        let pair = input.value.trim().toUpperCase().replace(/\s+/g, '');
-        if (!pair) { this.showToast('Enter a pair name', 'warning'); return; }
-        if (!pair.includes('/')) pair += '/USDT';
-        
-        const allPairs = this.getAllPairs();
-        if (allPairs.includes(pair)) {
-            this.showToast(`${pair} already exists`, 'warning');
-            input.value = '';
-            return;
-        }
-        
-        const settings = getSettings();
-        if (!settings.customPairs) settings.customPairs = [];
-        // If it was a removed default, restore it
-        if (CONFIG.PAIRS.includes(pair)) {
-            settings.removedPairs = (settings.removedPairs || []).filter(p => p !== pair);
-        } else {
-            settings.customPairs.push(pair);
-        }
-        saveSettings(settings);
-        
-        input.value = '';
-        this.renderCustomPairs();
-        this.showToast(`${pair} added!`, 'success');
-    }
-    
-    removePair(pair) {
-        const settings = getSettings();
-        if (CONFIG.PAIRS.includes(pair)) {
-            // It's a default pair — add to removed list
-            if (!settings.removedPairs) settings.removedPairs = [];
-            if (!settings.removedPairs.includes(pair)) settings.removedPairs.push(pair);
-        } else {
-            // It's a custom pair — remove from list
-            settings.customPairs = (settings.customPairs || []).filter(p => p !== pair);
-        }
-        saveSettings(settings);
-        this.renderCustomPairs();
-        this.showToast(`${pair} removed`, 'info');
-    }
-    
-    renderCustomPairs() {
-        const container = document.getElementById('customPairsList');
-        if (!container) return;
-        
-        const pairs = this.getAllPairs();
-        const custom = (getSettings().customPairs || []);
-        
-        let html = '<div class="pairs-tag-list">';
-        pairs.forEach(p => {
-            const isCustom = custom.includes(p);
-            html += `<span class="pair-tag ${isCustom ? 'custom' : 'default'}">${p} <button class="pair-remove" onclick="app.removePair('${p}')">✕</button></span>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
     }
     
     // ===== APPLY CUSTOMIZATIONS =====
