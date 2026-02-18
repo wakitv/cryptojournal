@@ -109,6 +109,10 @@ class CryptoTraderApp {
         document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
         document.getElementById('okxTestBtn')?.addEventListener('click', () => this.testOKXConnection());
         
+        // TradingView sign-in
+        document.getElementById('tvSignInBtn')?.addEventListener('click', () => this.signInTradingView());
+        document.getElementById('tvRefreshChartBtn')?.addEventListener('click', () => this.refreshTVChart());
+        
         // Filter
         document.getElementById('applyFilterBtn')?.addEventListener('click', () => this.applyDateFilter());
         document.getElementById('resetFilterBtn')?.addEventListener('click', () => this.resetDateFilter());
@@ -1482,6 +1486,49 @@ class CryptoTraderApp {
         window.open(base + '?symbol=' + encodeURIComponent(symbol), '_blank');
     }
     
+    signInTradingView() {
+        // Open TradingView sign-in in a popup — same browser so cookies are shared
+        const w = 500, h = 700;
+        const left = (screen.width - w) / 2;
+        const top = (screen.height - h) / 2;
+        const popup = window.open(
+            'https://www.tradingview.com/accounts/signin/',
+            'tv_signin',
+            `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+        
+        // Update status
+        const statusEl = document.getElementById('tvSignInStatus');
+        const textEl = statusEl?.querySelector('.tv-signin-text');
+        const dotEl = statusEl?.querySelector('.tv-signin-dot');
+        
+        if (textEl) textEl.textContent = 'Signing in... complete sign-in in the popup window';
+        if (dotEl) dotEl.style.background = '#f59e0b';
+        
+        // Poll for popup close → assume sign-in complete
+        const checkClosed = setInterval(() => {
+            if (!popup || popup.closed) {
+                clearInterval(checkClosed);
+                localStorage.setItem('tvSignedIn', 'true');
+                if (textEl) textEl.textContent = 'Signed in ✓ — click Refresh Chart to apply';
+                if (dotEl) dotEl.style.background = '#22c55e';
+                if (statusEl) statusEl.classList.add('connected');
+                this.showToast('TradingView sign-in complete. Tap "Refresh Chart" to load your saved drawings.', 'success');
+            }
+        }, 500);
+    }
+    
+    refreshTVChart() {
+        const container = document.getElementById('tvChartContainer');
+        if (!container) return;
+        
+        const symbol = container.dataset.loadedSymbol || localStorage.getItem('tvChartSymbol') || 'OKX:BTCUSDT.P';
+        
+        // Destroy and recreate the chart iframe — picks up TV login cookies
+        this.createTVWidget(symbol);
+        this.showToast('Chart refreshed with your TradingView session', 'success');
+    }
+    
     switchTVSymbol(symbol) {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
@@ -2525,6 +2572,17 @@ class CryptoTraderApp {
         
         // Check OKX status badge
         this.checkOKXStatus();
+        
+        // Check TradingView sign-in status
+        const tvSignedIn = localStorage.getItem('tvSignedIn') === 'true';
+        const tvStatusEl = document.getElementById('tvSignInStatus');
+        const tvText = tvStatusEl?.querySelector('.tv-signin-text');
+        const tvDot = tvStatusEl?.querySelector('.tv-signin-dot');
+        if (tvSignedIn) {
+            if (tvText) tvText.textContent = 'Signed in ✓ — drawings save automatically';
+            if (tvDot) tvDot.style.background = '#22c55e';
+            if (tvStatusEl) tvStatusEl.classList.add('connected');
+        }
         
         document.getElementById('settingsOverlay').classList.add('active');
     }
