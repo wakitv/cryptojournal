@@ -1387,15 +1387,60 @@ class CryptoTraderApp {
         
         container.innerHTML = '';
         
+        // Try loading FULL TradingView chart (sign-in + persistent drawings)
+        const iframe = document.createElement('iframe');
+        iframe.id = 'tvChartIframe';
+        iframe.style.cssText = 'width:100%;height:100%;border:none;border-radius:0 0 0 12px;';
+        iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('allow', 'clipboard-write; clipboard-read');
+        
+        const chartId = localStorage.getItem('tvChartId') || '';
+        const base = chartId 
+            ? 'https://www.tradingview.com/chart/' + chartId + '/'
+            : 'https://www.tradingview.com/chart/';
+        iframe.src = base + '?symbol=' + encodeURIComponent(symbol) + '&interval=15&theme=dark&style=1&timezone=Etc%2FUTC';
+        
+        container.appendChild(iframe);
+        container.dataset.loadedSymbol = symbol;
+        
+        // Detect if iframe blocked by X-Frame-Options → fall back to embed widget
+        let loaded = false;
+        iframe.addEventListener('load', () => { loaded = true; });
+        iframe.addEventListener('error', () => {
+            console.warn('Full TV chart blocked, falling back to embed widget');
+            this.createTVWidgetEmbed(symbol);
+        });
+        
+        // Also check with timeout — blocked iframes sometimes don't fire error
+        setTimeout(() => {
+            try {
+                // If we can't access contentDocument and iframe appears empty, it was blocked
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (doc && doc.body && doc.body.innerHTML === '') {
+                    this.createTVWidgetEmbed(symbol);
+                }
+            } catch (e) {
+                // Cross-origin = it loaded successfully (TradingView is on different domain)
+                // This is actually the SUCCESS case
+            }
+        }, 5000);
+    }
+    
+    // Fallback: embed widget (no sign-in, but always works)
+    createTVWidgetEmbed(symbol = 'OKX:BTCUSDT.P') {
+        const container = document.getElementById('tvChartContainer');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        container.dataset.mode = 'embed';
+        
         const widgetDiv = document.createElement('div');
         widgetDiv.className = 'tradingview-widget-container';
-        widgetDiv.style.height = '100%';
-        widgetDiv.style.width = '100%';
+        widgetDiv.style.cssText = 'height:100%;width:100%;';
         
         const innerDiv = document.createElement('div');
         innerDiv.className = 'tradingview-widget-container__widget';
-        innerDiv.style.height = '100%';
-        innerDiv.style.width = '100%';
+        innerDiv.style.cssText = 'height:100%;width:100%;';
         widgetDiv.appendChild(innerDiv);
         
         const script = document.createElement('script');
@@ -1421,48 +1466,37 @@ class CryptoTraderApp {
             calendar: false,
             hide_volume: true,
             withdateranges: true,
-            show_popup_button: true,
-            popup_width: "1000",
-            popup_height: "650",
             support_host: "https://www.tradingview.com"
         });
         widgetDiv.appendChild(script);
         container.appendChild(widgetDiv);
-        
-        // Fix iframe sandbox to allow TradingView sign-in popup
-        setTimeout(() => {
-            const iframe = container.querySelector('iframe');
-            if (iframe) {
-                iframe.setAttribute('sandbox', 
-                    'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation');
-                iframe.setAttribute('allow', 'clipboard-write');
-            }
-        }, 2000);
     }
     
     openInTradingView() {
         const container = document.getElementById('tvChartContainer');
         const symbol = container?.dataset.loadedSymbol || 'OKX:BTCUSDT.P';
-        // Open full TradingView chart — user can sign in there, all drawings saved to cloud
-        window.open('https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(symbol), '_blank');
+        const chartId = localStorage.getItem('tvChartId') || '';
+        const base = chartId 
+            ? 'https://www.tradingview.com/chart/' + chartId + '/'
+            : 'https://www.tradingview.com/chart/';
+        window.open(base + '?symbol=' + encodeURIComponent(symbol), '_blank');
     }
     
     switchTVSymbol(symbol) {
         const container = document.getElementById('tvChartContainer');
         if (!container) return;
         
-        const iframe = container.querySelector('iframe');
-        if (iframe && iframe.src) {
-            // Update iframe src with new symbol — iframe's localStorage persists (same domain)
-            // so TradingView saves drawings per symbol and they survive switching
-            try {
-                const url = new URL(iframe.src);
-                url.searchParams.set('symbol', symbol);
-                iframe.src = url.toString();
-            } catch (e) {
-                // Fallback: recreate widget
-                this.createTVWidget(symbol);
-            }
+        const iframe = document.getElementById('tvChartIframe');
+        if (iframe) {
+            // Full TV chart — update URL, session stays, drawings persist
+            const chartId = localStorage.getItem('tvChartId') || '';
+            const base = chartId 
+                ? 'https://www.tradingview.com/chart/' + chartId + '/'
+                : 'https://www.tradingview.com/chart/';
+            iframe.src = base + '?symbol=' + encodeURIComponent(symbol) + '&interval=15&theme=dark&style=1&timezone=Etc%2FUTC';
+        } else if (container.dataset.mode === 'embed') {
+            // Embed fallback — recreate widget with new symbol
+            this.createTVWidgetEmbed(symbol);
         } else {
             this.createTVWidget(symbol);
         }
