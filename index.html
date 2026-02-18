@@ -179,10 +179,6 @@
                             <span>Trading Chart</span>
                         </div>
                         <div class="tv-chart-actions">
-                            <button class="tv-open-btn" id="tvOpenBtn" onclick="event.stopPropagation(); app.openInTradingView()" title="Open chart in new window">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                Pop Out
-                            </button>
                             <button class="tv-chart-fold-btn" id="tvFoldBtn">▼</button>
                         </div>
                     </div>
@@ -417,6 +413,21 @@
                         <button class="btn-sm" id="okxTestBtn">🔌 Test Connection</button>
                     </div>
                     <div class="form-group toggle-group" style="margin-top:12px"><label>Auto-Sync OKX Trades (every 60s)</label><input type="checkbox" id="okxAutoSync"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 class="settings-section-title">📊 TradingView (Chart Drawings)</h4>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">Sign in to your TradingView account to save all drawings, indicators, and chart layouts permanently. Free account works.</p>
+                    <div id="tvSignInStatus" class="tv-signin-status">
+                        <span class="tv-signin-dot"></span>
+                        <span class="tv-signin-text">Not signed in — drawings won't persist</span>
+                    </div>
+                    <button class="btn-sm tv-signin-btn" id="tvSignInBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Sign in to TradingView
+                    </button>
+                    <p style="font-size:0.65rem;color:var(--text-muted);margin-top:10px">After signing in, click "Refresh Chart" to apply your session. Your trend lines, Fibonacci, indicators — everything saves to your TradingView cloud.</p>
+                    <button class="btn-sm secondary" id="tvRefreshChartBtn" style="margin-top:8px">🔄 Refresh Chart</button>
                 </div>
             </div>
             <div class="settings-footer"><button class="btn-secondary" id="settingsCancel">Cancel</button><button class="btn-primary" id="settingsSave">Save Settings</button></div>
