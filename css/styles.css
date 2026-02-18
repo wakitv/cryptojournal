@@ -348,6 +348,7 @@ body {
 
 .position-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
 .position-pair { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pair-link:hover { text-decoration: underline; opacity: 0.85; }
 .strategy-tag { padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; background: var(--purple-dim); color: var(--purple); font-weight: 600; }
 .position-pnl { text-align: right; }
 .pnl-value { font-size: 1.3rem; font-weight: 800; font-family: var(--font-mono); }
@@ -1087,188 +1088,28 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
 }
 
 /* ==================== TRADINGVIEW CHART ==================== */
-.tv-chart-wrapper {
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 20px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    transition: all 0.3s ease;
-}
-.tv-chart-header {
+/* Positions + Watchlist Layout */
+.positions-layout {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    cursor: pointer;
-    background: linear-gradient(135deg, rgba(30,30,50,0.95), rgba(20,20,40,0.95));
-    border-bottom: 1px solid var(--border);
-    user-select: none;
-    transition: background 0.2s;
-}
-.tv-chart-header:hover {
-    background: linear-gradient(135deg, rgba(40,40,65,0.95), rgba(30,30,55,0.95));
-}
-.tv-chart-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: var(--text-primary);
-}
-.tv-chart-icon {
-    font-size: 1.1rem;
-}
-.tv-chart-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-/* Interval buttons */
-.chart-intervals {
-    display: flex;
-    gap: 2px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 6px;
-    padding: 2px;
-}
-.chart-intervals button {
-    padding: 4px 10px;
-    border-radius: 5px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.65rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: 'JetBrains Mono', monospace;
-}
-.chart-intervals button.active {
-    background: rgba(0,200,255,0.15);
-    color: var(--cyan);
-}
-.chart-intervals button:hover:not(.active) { color: var(--text-primary); }
-/* Drawing tools */
-.chart-tools {
-    display: flex;
-    gap: 2px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 6px;
-    padding: 2px;
-}
-.chart-tools button {
-    padding: 4px 8px;
-    border-radius: 5px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.chart-tools button.active {
-    background: rgba(0,200,255,0.15);
-    color: var(--cyan);
-}
-.chart-tools button:hover:not(.active) { color: var(--text-primary); }
-.chart-tools button[data-tool="delete"]:hover { color: var(--red); }
-/* Drawing overlay */
-.drawing-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 5;
-}
-.drawing-overlay.active {
-    pointer-events: auto;
-    cursor: crosshair;
-}
-.drawing-overlay line.drawing-line {
-    stroke-width: 1.5;
-    stroke: #f59e0b;
-}
-.drawing-overlay line.drawing-hline {
-    stroke-width: 1;
-    stroke: #22c55e;
-    stroke-dasharray: 6,3;
-}
-.drawing-overlay line.drawing-preview {
-    stroke-width: 1;
-    stroke: rgba(255,255,255,0.4);
-    stroke-dasharray: 4,4;
-}
-.drawing-overlay .drawing-label {
-    fill: rgba(255,255,255,0.6);
-    font-size: 10px;
-    font-family: 'JetBrains Mono', monospace;
-}
-.drawing-overlay .drawing-hitbox {
-    stroke: transparent;
-    stroke-width: 10;
-    fill: none;
-    cursor: pointer;
-    pointer-events: stroke;
-}
-.drawing-overlay .drawing-hitbox:hover + line {
-    stroke-width: 2.5;
-}
-
-/* TradingView Sign-in (Settings) */
-/* Chart drawing overlay styles handled inline */
-.tv-chart-fold-btn {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: var(--text-muted);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-.tv-chart-fold-btn:hover {
-    background: rgba(255,255,255,0.1);
-    color: var(--text-primary);
-}
-.tv-chart-wrapper.collapsed .tv-chart-fold-btn {
-    transform: rotate(-90deg);
-}
-.tv-chart-wrapper.collapsed .tv-chart-header {
-    border-bottom: none;
-}
-.tv-chart-body {
-    height: 620px;
-    overflow: hidden;
-    transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
-    opacity: 1;
-}
-.tv-split-layout {
-    display: flex;
-    height: 100%;
     gap: 0;
+    min-height: 400px;
 }
-.tv-chart-panel {
+.positions-col {
     flex: 1;
     min-width: 0;
-    height: 100%;
+    overflow-y: auto;
 }
-.tv-watchlist-panel {
-    width: 280px;
-    height: 100%;
-    border-left: 1px solid var(--border);
+.watchlist-col {
+    width: 300px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    background: rgba(14,14,26,0.95);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
     overflow: hidden;
+    margin-left: 12px;
+    max-height: 600px;
 }
 /* Watchlist UI */
 .wl-header {
@@ -1439,21 +1280,15 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     color: var(--text-muted);
     font-weight: 500;
 }
-.tv-chart-wrapper.collapsed .tv-chart-body {
-    height: 0;
-    opacity: 0;
-}
 @media (max-width: 768px) {
-    .tv-chart-body { height: 500px; }
-    .tv-split-layout { flex-direction: column; }
-    .tv-watchlist-panel { 
-        width: 100%; 
-        height: 250px; 
-        border-left: none;
-        border-top: 1px solid var(--border);
+    .positions-layout {
+        flex-direction: column;
     }
-    .tv-chart-panel { height: 380px; flex-shrink: 0; }
-    .tv-chart-title { font-size: 0.78rem; gap: 6px; }
-    .chart-intervals { display: none; }
-    .chart-tools button { padding: 4px 6px; font-size: 0.7rem; }
+    .watchlist-col {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 12px;
+        max-height: 350px;
+        border-radius: 12px;
+    }
 }
