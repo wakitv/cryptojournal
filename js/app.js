@@ -1311,10 +1311,14 @@ class CryptoTraderApp {
     
     // Convert pair to TradingView symbol with smart fallback
     getTVSymbol(pair) {
-        const base = pair.split('/')[0];
+        // If already a full TV symbol (contains : or .), return as-is
+        if (pair.includes(':') || pair === 'BTC.D' || pair === 'ETH.D' || pair === 'USDT.D' || pair.match(/^[A-Z]+\.[A-Z]$/)) {
+            return pair;
+        }
+        
         const key = pair.replace('/', '');
         
-        // Special commodity/forex pairs that need different TradingView source
+        // Special commodity/forex pairs
         const specialMap = {
             'XAU/USDT': 'PEPPERSTONE:XAUUSD',
             'XAG/USDT': 'PEPPERSTONE:XAGUSD',
@@ -1326,6 +1330,13 @@ class CryptoTraderApp {
         
         // Standard crypto — use OKX perpetual swap format
         return 'OKX:' + key + '.P';
+    }
+    
+    // Check if a watchlist pair can get OKX price data
+    isOKXPair(pair) {
+        // Non-OKX pairs: dominance, stocks, forex, or anything with ':'
+        if (pair.includes(':') || pair.endsWith('.D') || !pair.includes('/')) return false;
+        return true;
     }
     
     initTVChart() {
@@ -1488,7 +1499,7 @@ class CryptoTraderApp {
                 <button class="wl-add-btn" id="wlAddBtn" title="Add pair">+</button>
             </div>
             <div class="wl-add-row" id="wlAddRow" style="display:none">
-                <input class="wl-add-input" id="wlAddInput" placeholder="e.g. LINK/USDT" maxlength="20">
+                <input class="wl-add-input" id="wlAddInput" placeholder="LINK/USDT, BTC.D, NASDAQ:AAPL" maxlength="30">
                 <button class="wl-add-confirm" id="wlAddConfirm">✓</button>
             </div>
             <div class="wl-table-header">
@@ -1499,15 +1510,29 @@ class CryptoTraderApp {
             </div>
             <div class="wl-list" id="wlList">
                 ${pairs.map(p => {
-                    const key = p.replace('/', '');
+                    const key = p.replace(/[\/:.]/g, '');
                     const tvSymbol = this.getTVSymbol(p);
-                    const base = p.split('/')[0];
+                    const isOKX = this.isOKXPair(p);
                     const isPosition = positions.some(pos => pos.pair === p);
+                    
+                    // Display name logic
+                    let displayName, displaySub;
+                    if (p.includes('/')) {
+                        displayName = p.split('/')[0];
+                        displaySub = '/' + p.split('/')[1];
+                    } else if (p.includes(':')) {
+                        displayName = p.split(':')[1];
+                        displaySub = '<small class="wl-exchange">' + p.split(':')[0] + '</small>';
+                    } else {
+                        displayName = p;
+                        displaySub = '';
+                    }
+                    
                     return `
-                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}" data-pair="${p}" data-symbol="${tvSymbol}">
-                        <span class="wl-symbol">${base}<small>/${p.split('/')[1]}</small></span>
-                        <span class="wl-price" id="wlp-${key}">—</span>
-                        <span class="wl-chg" id="wlc-${key}">—</span>
+                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}${!isOKX ? ' wl-tv-only' : ''}" data-pair="${p}" data-symbol="${tvSymbol}" data-okx="${isOKX}">
+                        <span class="wl-symbol">${displayName}<small>${displaySub}</small></span>
+                        <span class="wl-price" id="wlp-${key}">${isOKX ? '—' : ''}</span>
+                        <span class="wl-chg" id="wlc-${key}">${isOKX ? '—' : '<small class="wl-tv-tag">TV</small>'}</span>
                         <span class="wl-del" data-pair="${p}" title="Remove">✕</span>
                     </div>`;
                 }).join('')}
@@ -1572,10 +1597,36 @@ class CryptoTraderApp {
         let pair = input.value.trim().toUpperCase();
         if (!pair) return;
         
-        if (!pair.includes('/')) {
-            const match = pair.match(/^(.+?)(USDT|USDC|BTC|ETH|BUSD)$/);
-            if (match) pair = match[1] + '/' + match[2];
-            else { this.showToast('Format: BTC/USDT or BTCUSDT', 'warning'); return; }
+        // Known TradingView special symbols
+        const tvSpecials = {
+            'BTC.D': 'BTC.D', 'ETH.D': 'ETH.D', 'USDT.D': 'USDT.D',
+            'BTCD': 'BTC.D', 'ETHD': 'ETH.D', 'USDTD': 'USDT.D',
+            'DXY': 'TVC:DXY', 'SPX': 'SP:SPX', 'SPX500': 'SP:SPX',
+            'NDQ': 'NASDAQ:NDX', 'NASDAQ': 'NASDAQ:NDX', 'NDX': 'NASDAQ:NDX',
+            'GOLD': 'PEPPERSTONE:XAUUSD', 'SILVER': 'PEPPERSTONE:XAGUSD',
+            'US30': 'DJ:DJI', 'DOW': 'DJ:DJI',
+        };
+        
+        // Check if it's a known special symbol
+        if (tvSpecials[pair]) {
+            pair = tvSpecials[pair];
+        }
+        // If it contains ':', it's a full TradingView symbol (e.g. NASDAQ:AAPL)
+        else if (pair.includes(':')) {
+            // Keep as-is
+        }
+        // If it ends with .D, keep as dominance
+        else if (pair.endsWith('.D')) {
+            // Keep as-is
+        }
+        // Otherwise try to format as crypto pair
+        else if (!pair.includes('/')) {
+            const match = pair.match(/^(.+?)(USDT|USDC|BTC|ETH|BUSD|USD)$/);
+            if (match) {
+                pair = match[1] + '/' + match[2];
+            }
+            // If no match, could be a stock ticker — wrap with exchange
+            // Leave as-is, user can add exchange prefix
         }
         
         if (this.watchlistPairs?.includes(pair)) {
@@ -1603,18 +1654,22 @@ class CryptoTraderApp {
     async refreshWatchlistPrices() {
         if (!this.watchlistPairs || this.watchlistPairs.length === 0) return;
         
+        // Only fetch prices for OKX-supported pairs
+        const okxPairs = this.watchlistPairs.filter(p => this.isOKXPair(p));
+        if (okxPairs.length === 0) return;
+        
         try {
             let prices = {}, changes = {};
             if (cryptoAPI.isConfigured()) {
-                const result = await cryptoAPI.getLivePrices(this.watchlistPairs);
+                const result = await cryptoAPI.getLivePrices(okxPairs);
                 if (result.success) {
                     prices = result.prices || {};
                     changes = result.changes || {};
                 }
             }
             
-            this.watchlistPairs.forEach(pair => {
-                const key = pair.replace('/', '');
+            okxPairs.forEach(pair => {
+                const key = pair.replace(/[\/:.]/g, '');
                 const priceEl = document.getElementById('wlp-' + key);
                 const chgEl = document.getElementById('wlc-' + key);
                 
@@ -1622,14 +1677,12 @@ class CryptoTraderApp {
                     const price = parseFloat(prices[pair]);
                     priceEl.textContent = price >= 1 ? formatWithCommas(price) : price.toPrecision(4);
                     
-                    // Use real 24h change from OKX
                     if (changes[pair] !== undefined && chgEl) {
                         const chg = parseFloat(changes[pair]);
                         chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
                         chgEl.className = 'wl-chg ' + (chg >= 0 ? 'positive' : 'negative');
                     }
                     
-                    // Flash on price change
                     const prevPrice = this.prevWLPrices?.[pair];
                     if (prevPrice && price !== prevPrice && priceEl) {
                         priceEl.classList.add('wl-flash');
