@@ -102,6 +102,7 @@ class CryptoAPI {
     
     // ===== LIVE PRICES (OKX) =====
     async getLivePrices(pairs) { return await this.request('getLivePrices', { pairs }); }
+    async getCandles(pair, interval, limit) { return await this.request('getCandles', { pair, interval, limit: limit || 300 }); }
     async refreshPositionPrices() { return await this.request('refreshPositionPrices'); }
     
     // ===== OKX TRADE SYNC =====
