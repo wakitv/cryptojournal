@@ -1492,6 +1492,23 @@ class CryptoTraderApp {
         
         this.watchlistPairs = pairs;
         
+        // Load saved colors and order
+        const wlColors = settings.watchlistColors || {};
+        const wlOrder = settings.watchlistOrder || [];
+        
+        // Sort pairs by saved order (unknown pairs go to end)
+        if (wlOrder.length > 0) {
+            pairs.sort((a, b) => {
+                const ia = wlOrder.indexOf(a);
+                const ib = wlOrder.indexOf(b);
+                if (ia === -1 && ib === -1) return 0;
+                if (ia === -1) return 1;
+                if (ib === -1) return -1;
+                return ia - ib;
+            });
+            this.watchlistPairs = pairs;
+        }
+        
         // Render watchlist UI
         container.innerHTML = `
             <div class="wl-header">
@@ -1503,19 +1520,20 @@ class CryptoTraderApp {
                 <button class="wl-add-confirm" id="wlAddConfirm">✓</button>
             </div>
             <div class="wl-table-header">
+                <span></span>
                 <span class="wl-col-sym">Symbol</span>
                 <span class="wl-col-price">Price</span>
                 <span class="wl-col-chg">24h%</span>
                 <span class="wl-col-del"></span>
             </div>
             <div class="wl-list" id="wlList">
-                ${pairs.map(p => {
+                ${pairs.map((p, idx) => {
                     const key = p.replace(/[\/:.]/g, '');
                     const tvSymbol = this.getTVSymbol(p);
                     const isOKX = this.isOKXPair(p);
                     const isPosition = positions.some(pos => pos.pair === p);
+                    const tagColor = wlColors[p] || '';
                     
-                    // Display name logic
                     let displayName, displaySub;
                     if (p.includes('/')) {
                         displayName = p.split('/')[0];
@@ -1529,7 +1547,8 @@ class CryptoTraderApp {
                     }
                     
                     return `
-                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}${!isOKX ? ' wl-tv-only' : ''}" data-pair="${p}" data-symbol="${tvSymbol}" data-okx="${isOKX}">
+                    <div class="wl-row${isPosition ? ' wl-has-pos' : ''}${!isOKX ? ' wl-tv-only' : ''}" data-pair="${p}" data-symbol="${tvSymbol}" data-okx="${isOKX}" data-idx="${idx}" draggable="true">
+                        <span class="wl-tag${tagColor ? ' wl-tag-' + tagColor : ''}" data-pair="${p}" title="Color tag"></span>
                         <span class="wl-symbol">${displayName}<small>${displaySub}</small></span>
                         <span class="wl-price" id="wlp-${key}">${isOKX ? '—' : ''}</span>
                         <span class="wl-chg" id="wlc-${key}">${isOKX ? '—' : '<small class="wl-tv-tag">TV</small>'}</span>
@@ -1542,17 +1561,37 @@ class CryptoTraderApp {
         // Click row → change chart
         container.querySelectorAll('.wl-row').forEach(row => {
             row.addEventListener('click', (e) => {
-                if (e.target.classList.contains('wl-del')) return;
+                if (e.target.classList.contains('wl-del') || e.target.classList.contains('wl-tag')) return;
                 const symbol = row.dataset.symbol;
                 container.querySelectorAll('.wl-row').forEach(r => r.classList.remove('active'));
                 row.classList.add('active');
-                // Save user selection so it persists across refreshes
                 localStorage.setItem('tvChartSymbol', symbol);
                 const chartContainer = document.getElementById('tvChartContainer');
                 if (chartContainer) {
                     chartContainer.dataset.loadedSymbol = symbol;
                     this.loadTVChart(symbol);
                 }
+            });
+        });
+        
+        // Click color tag → cycle colors
+        container.querySelectorAll('.wl-tag').forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pair = tag.dataset.pair;
+                const settings = getSettings();
+                if (!settings.watchlistColors) settings.watchlistColors = {};
+                const current = settings.watchlistColors[pair] || '';
+                const cycle = ['', 'red', 'green', 'white'];
+                const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+                if (next) {
+                    settings.watchlistColors[pair] = next;
+                } else {
+                    delete settings.watchlistColors[pair];
+                }
+                saveSettings(settings);
+                // Update tag class
+                tag.className = 'wl-tag' + (next ? ' wl-tag-' + next : '');
             });
         });
         
@@ -1563,6 +1602,58 @@ class CryptoTraderApp {
                 this.removeWatchlistPair(btn.dataset.pair);
             });
         });
+        
+        // Drag & drop reorder
+        const wlList = document.getElementById('wlList');
+        if (wlList) {
+            let dragSrc = null;
+            
+            wlList.querySelectorAll('.wl-row').forEach(row => {
+                row.addEventListener('dragstart', (e) => {
+                    dragSrc = row;
+                    row.classList.add('wl-dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', row.dataset.idx);
+                });
+                row.addEventListener('dragend', () => {
+                    row.classList.remove('wl-dragging');
+                    wlList.querySelectorAll('.wl-row').forEach(r => r.classList.remove('wl-drag-over'));
+                    dragSrc = null;
+                });
+                row.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (row !== dragSrc) {
+                        wlList.querySelectorAll('.wl-row').forEach(r => r.classList.remove('wl-drag-over'));
+                        row.classList.add('wl-drag-over');
+                    }
+                });
+                row.addEventListener('dragleave', () => {
+                    row.classList.remove('wl-drag-over');
+                });
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    row.classList.remove('wl-drag-over');
+                    if (dragSrc && dragSrc !== row) {
+                        // Reorder DOM
+                        const allRows = [...wlList.querySelectorAll('.wl-row')];
+                        const fromIdx = allRows.indexOf(dragSrc);
+                        const toIdx = allRows.indexOf(row);
+                        if (fromIdx < toIdx) {
+                            row.after(dragSrc);
+                        } else {
+                            row.before(dragSrc);
+                        }
+                        // Save new order
+                        const newOrder = [...wlList.querySelectorAll('.wl-row')].map(r => r.dataset.pair);
+                        const settings = getSettings();
+                        settings.watchlistOrder = newOrder;
+                        saveSettings(settings);
+                        this.watchlistPairs = newOrder;
+                    }
+                });
+            });
+        }
         
         // Highlight current chart pair
         const currentSymbol = document.getElementById('tvChartContainer')?.dataset.loadedSymbol;
