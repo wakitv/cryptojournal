@@ -102,6 +102,11 @@ class CryptoTraderApp {
         document.getElementById('addStrategyBtn')?.addEventListener('click', () => this.openStrategyModal());
         document.getElementById('addReminderBtn')?.addEventListener('click', () => this.openReminderModal());
         
+        // TradingView Chart
+        document.getElementById('tvChartToggle')?.addEventListener('click', () => this.toggleTVChart());
+        document.getElementById('tvPairSelect')?.addEventListener('change', () => this.loadTVChart());
+        document.getElementById('tvIntervalSelect')?.addEventListener('change', () => this.loadTVChart());
+        
         // OKX Settings
         document.getElementById('okxSaveKeys')?.addEventListener('click', () => this.saveOKXCredentials());
         document.getElementById('okxTestBtn')?.addEventListener('click', () => this.testOKXConnection());
@@ -142,6 +147,7 @@ class CryptoTraderApp {
             case 'positions': 
                 this.renderPositionsTab();
                 this.startPriceAutoRefresh();
+                this.initTVChart();
                 break;
             case 'strategies': this.renderStrategiesTab(); break;
             case 'reminders': this.renderRemindersTab(); break;
@@ -1297,6 +1303,128 @@ class CryptoTraderApp {
                 </div>
             `;
         }).join('');
+    }
+    
+    // ===== TRADINGVIEW CHART =====
+    
+    initTVChart() {
+        const container = document.getElementById('tvChartContainer');
+        if (!container) return;
+        
+        const pairSelect = document.getElementById('tvPairSelect');
+        if (!pairSelect) return;
+        
+        // Build pair list from: open positions + custom pairs + defaults
+        const pairSet = new Set();
+        const positions = this.data.positions || [];
+        positions.forEach(p => { if (p.pair) pairSet.add(p.pair); });
+        
+        const settings = getSettings();
+        const customPairs = settings.customPairs || [];
+        customPairs.forEach(p => pairSet.add(p));
+        
+        // Defaults
+        ['BTC/USDT','ETH/USDT','SOL/USDT','XRP/USDT','DOGE/USDT','ADA/USDT'].forEach(p => pairSet.add(p));
+        
+        // Populate dropdown
+        const currentVal = pairSelect.value;
+        pairSelect.innerHTML = '';
+        pairSet.forEach(pair => {
+            const opt = document.createElement('option');
+            opt.value = 'OKX:' + pair.replace('/', '');
+            opt.textContent = pair;
+            pairSelect.appendChild(opt);
+        });
+        
+        // Auto-select first open position's pair, or restore previous
+        if (positions.length > 0) {
+            const tvSymbol = 'OKX:' + positions[0].pair.replace('/', '');
+            pairSelect.value = tvSymbol;
+        } else if (currentVal) {
+            pairSelect.value = currentVal;
+        }
+        
+        // Restore collapsed state
+        const wrapper = document.getElementById('tvChartWrapper');
+        const saved = localStorage.getItem('tvChartCollapsed');
+        if (saved === 'true' && wrapper) {
+            wrapper.classList.add('collapsed');
+        }
+        
+        // Only load if not already loaded with same symbol
+        const symbol = pairSelect.value;
+        if (container.dataset.loadedSymbol !== symbol || !container.hasChildNodes()) {
+            container.dataset.loadedSymbol = symbol;
+            this.loadTVChart();
+        }
+    }
+    
+    loadTVChart() {
+        const container = document.getElementById('tvChartContainer');
+        if (!container) return;
+        
+        const wrapper = document.getElementById('tvChartWrapper');
+        if (wrapper?.classList.contains('collapsed')) return; // Don't load if collapsed
+        
+        const symbol = document.getElementById('tvPairSelect')?.value || 'OKX:BTCUSDT';
+        const interval = document.getElementById('tvIntervalSelect')?.value || '15';
+        
+        // Clear previous widget
+        container.innerHTML = '';
+        
+        // Create TradingView Advanced Chart widget
+        const widgetDiv = document.createElement('div');
+        widgetDiv.className = 'tradingview-widget-container';
+        widgetDiv.style.height = '100%';
+        widgetDiv.style.width = '100%';
+        
+        const innerDiv = document.createElement('div');
+        innerDiv.className = 'tradingview-widget-container__widget';
+        innerDiv.style.height = '100%';
+        innerDiv.style.width = '100%';
+        widgetDiv.appendChild(innerDiv);
+        
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+        script.async = true;
+        script.textContent = JSON.stringify({
+            autosize: true,
+            symbol: symbol,
+            interval: interval,
+            timezone: "Etc/UTC",
+            theme: "dark",
+            style: "1",
+            locale: "en",
+            backgroundColor: "rgba(14, 14, 26, 1)",
+            gridColor: "rgba(255, 255, 255, 0.03)",
+            hide_top_toolbar: false,
+            hide_legend: false,
+            allow_symbol_change: true,
+            save_image: false,
+            calendar: false,
+            hide_volume: false,
+            support_host: "https://www.tradingview.com"
+        });
+        widgetDiv.appendChild(script);
+        container.appendChild(widgetDiv);
+    }
+    
+    toggleTVChart() {
+        const wrapper = document.getElementById('tvChartWrapper');
+        if (!wrapper) return;
+        
+        wrapper.classList.toggle('collapsed');
+        const isCollapsed = wrapper.classList.contains('collapsed');
+        localStorage.setItem('tvChartCollapsed', isCollapsed);
+        
+        // Load chart when expanding if container is empty
+        if (!isCollapsed) {
+            const container = document.getElementById('tvChartContainer');
+            if (container && !container.hasChildNodes()) {
+                setTimeout(() => this.loadTVChart(), 100);
+            }
+        }
     }
     
     // ===== POSITION ACTIONS =====
