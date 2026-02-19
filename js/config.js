@@ -76,7 +76,14 @@ function formatNumber(value) {
 function formatWithCommas(num) {
     if (num === null || num === undefined || num === '') return '0';
     const n = parseFloat(String(num).replace(/,/g, '')) || 0;
-    return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+    // Use enough decimals to preserve crypto precision (e.g. 0.1016, 0.00001234)
+    const decimals = n >= 1 ? Math.min(countDecimals(n), 6) : Math.min(countDecimals(n), 8);
+    return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+}
+function countDecimals(n) {
+    const s = String(n);
+    const dot = s.indexOf('.');
+    return dot === -1 ? 0 : s.length - dot - 1;
 }
 
 function parseFormattedNumber(str) {
@@ -86,7 +93,9 @@ function parseFormattedNumber(str) {
 
 function formatDate(dateStr) {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
+    // Append T00:00:00 to date-only strings to avoid UTC timezone shift
+    const raw = String(dateStr).trim();
+    const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw + 'T00:00:00' : raw);
     if (isNaN(date.getTime())) return dateStr;
     return date.toLocaleDateString(CONFIG.APP.DATE_FORMAT, {
         year: 'numeric', month: 'short', day: 'numeric'
@@ -103,9 +112,16 @@ function formatDateLong(dateStr) {
 
 function formatDateForInput(dateStr) {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    // Avoid timezone shift: parse as string first
+    const s = String(dateStr).split('T')[0].trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // Try parsing other formats
+    const date = new Date(dateStr + (String(dateStr).includes('T') ? '' : 'T00:00:00'));
     if (isNaN(date.getTime())) return '';
-    return date.toISOString().split('T')[0];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 function getDateStr(dateValue) {
@@ -152,7 +168,8 @@ function formatPercent(value) {
 }
 
 function setupCommaInput(input) {
-    if (!input) return;
+    if (!input || input._commaSetup) return;
+    input._commaSetup = true;
     input.addEventListener('input', function(e) {
         let value = this.value.replace(/[^0-9.]/g, '');
         if (value) {
