@@ -842,6 +842,62 @@ textarea.form-input { font-family: var(--font-body); resize: vertical; }
     text-align: center;
 }
 
+/* ===== TRADE READONLY INFO (edit modal) ===== */
+.trade-readonly-info {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+.trade-ro-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.trade-ro-pair {
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+.trade-ro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.trade-ro-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.trade-ro-item .ro-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.trade-ro-item .ro-value {
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+.trade-ro-pnl {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.trade-ro-pnl .pnl-amount {
+    font-size: 1.1rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+}
+
 /* ===== TRADE SCREENSHOT (in edit modal) ===== */
 .trade-screenshot-row {
     display: flex;
