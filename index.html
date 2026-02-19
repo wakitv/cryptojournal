@@ -213,26 +213,29 @@
             <div class="modal-header"><h3 class="modal-title" id="tradeModalTitle">Edit Trade</h3><button class="modal-close" onclick="app.closeTradeModal()">✕</button></div>
             <div class="modal-body"><form id="tradeForm" onsubmit="return false;">
                 <input type="hidden" id="tradeRowIndex">
-                <div class="form-row">
-                    <div class="form-group"><label>Date *</label><input type="text" id="tradeDate" class="form-input"></div>
-                    <div class="form-group"><label>Pair *</label><select id="tradePair" class="form-input"><option value="">Select pair</option></select></div>
+                <!-- Read-only trade info (shown when editing) -->
+                <div id="tradeReadOnlyInfo" class="trade-readonly-info" style="display:none"></div>
+                <!-- Full form (shown when creating new trade) -->
+                <div id="tradeFullForm">
+                    <div class="form-row">
+                        <div class="form-group"><label>Date *</label><input type="text" id="tradeDate" class="form-input"></div>
+                        <div class="form-group"><label>Pair *</label><select id="tradePair" class="form-input"><option value="">Select pair</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Direction</label><select id="tradeType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select></div>
+                        <div class="form-group"><label>Entry Price *</label><input type="text" id="tradeEntry" class="form-input amount-input" placeholder="0.00"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Exit Price</label><input type="text" id="tradeExit" class="form-input amount-input" placeholder="0.00"></div>
+                        <div class="form-group"><label>Quantity</label><input type="text" id="tradeQty" class="form-input amount-input" placeholder="1"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Stop Loss</label><input type="text" id="tradeSL" class="form-input amount-input" placeholder="0.00"></div>
+                        <div class="form-group"><label>Duration</label><input type="text" id="tradeDuration" class="form-input" placeholder="e.g. 2d 5h 30m"></div>
+                    </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Direction</label><select id="tradeType" class="form-input"><option value="LONG">↑ LONG</option><option value="SHORT">↓ SHORT</option></select></div>
-                    <div class="form-group"><label>Strategy</label><select id="tradeStrategy" class="form-input"><option value="">Select strategy</option></select></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Entry Price *</label><input type="text" id="tradeEntry" class="form-input amount-input" placeholder="0.00"></div>
-                    <div class="form-group"><label>Exit Price</label><input type="text" id="tradeExit" class="form-input amount-input" placeholder="0.00"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Quantity</label><input type="text" id="tradeQty" class="form-input amount-input" placeholder="1"></div>
-                    <div class="form-group"><label>Stop Loss</label><input type="text" id="tradeSL" class="form-input amount-input" placeholder="0.00"></div>
-                </div>
-                <div class="form-group">
-                    <label>Duration</label>
-                    <input type="text" id="tradeDuration" class="form-input" placeholder="e.g. 2d 5h 30m">
-                </div>
+                <!-- Editable fields (always shown) -->
+                <div class="form-group"><label>Strategy</label><select id="tradeStrategy" class="form-input"><option value="">Select strategy</option></select></div>
                 <div class="form-group">
                     <label>📸 Screenshot (optional)</label>
                     <div class="trade-screenshot-row">
