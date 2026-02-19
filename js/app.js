@@ -802,7 +802,6 @@ class CryptoTraderApp {
             if (el('tradeExit')) el('tradeExit').value = editData.exitPrice || '';
             if (el('tradeQty')) el('tradeQty').value = editData.quantity;
             if (el('tradeSL')) el('tradeSL').value = editData.stopLoss || '';
-            if (el('tradeTP')) el('tradeTP').value = editData.takeProfit || '';
             if (el('tradeDuration')) el('tradeDuration').value = editData.duration || '';
             if (el('tradeNotes')) el('tradeNotes').value = editData.notes || '';
             
@@ -850,6 +849,18 @@ class CryptoTraderApp {
             pnlPercent = type === 'LONG' ? ((exitPrice - entryPrice) / entryPrice * 100) : ((entryPrice - exitPrice) / entryPrice * 100);
         }
         
+        // When editing, use original OKX PnL if entry/exit weren't changed
+        const editOriginal = rowIndex ? this.data.trades.find(t => t.rowIndex == rowIndex) : null;
+        if (editOriginal && exitPrice > 0) {
+            const origEntry = parseFloat(editOriginal.entryPrice) || 0;
+            const origExit = parseFloat(editOriginal.exitPrice) || 0;
+            if (Math.abs(origEntry - entryPrice) < 0.0001 && Math.abs(origExit - exitPrice) < 0.0001) {
+                // Prices unchanged — keep original PnL (from OKX, more accurate)
+                pnl = parseFloat(editOriginal.pnl) || pnl;
+                pnlPercent = parseFloat(editOriginal.pnlPercent) || pnlPercent;
+            }
+        }
+        
         // Handle screenshot
         let screenshotUrl = this.tradeScreenshotUrl || '';
         if (this.tradeScreenshotFile) {
@@ -879,13 +890,16 @@ class CryptoTraderApp {
             entryPrice, exitPrice: exitPrice || '',
             quantity,
             stopLoss: parseFormattedNumber(el('tradeSL')?.value) || '',
-            takeProfit: parseFormattedNumber(el('tradeTP')?.value) || '',
+            takeProfit: '',
             pnl: pnl.toFixed(2),
             pnlPercent: pnlPercent.toFixed(2),
             status: exitPrice > 0 ? 'CLOSED' : 'OPEN',
             notes: el('tradeNotes')?.value || '',
             duration: el('tradeDuration')?.value || '',
-            screenshotUrl: screenshotUrl
+            screenshotUrl: screenshotUrl,
+            // Preserve original dateOpened/dateClosed when editing
+            dateOpened: editOriginal?.dateOpened || '',
+            dateClosed: editOriginal?.dateClosed || ''
         };
         
         if (rowIndex) data.rowIndex = parseInt(rowIndex);
@@ -963,7 +977,6 @@ class CryptoTraderApp {
             <div class="detail-item"><span class="detail-label">Exit</span><span class="mono-text">${t.exitPrice ? '$' + formatWithCommas(t.exitPrice) : '—'}</span></div>
             <div class="detail-item"><span class="detail-label">Quantity</span><span class="mono-text">${t.quantity}</span></div>
             <div class="detail-item"><span class="detail-label">Stop Loss</span><span class="mono-text negative">${t.stopLoss ? '$' + formatWithCommas(t.stopLoss) : '—'}</span></div>
-            <div class="detail-item"><span class="detail-label">Take Profit</span><span class="mono-text positive">${t.takeProfit ? '$' + formatWithCommas(t.takeProfit) : '—'}</span></div>
             <div class="detail-item"><span class="detail-label">P&L</span><span class="mono-text ${getValueClass(pnl)}" style="font-size:1.1rem;font-weight:700">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}</span></div>
             <div class="detail-item"><span class="detail-label">P&L %</span><span class="mono-text ${getValueClass(t.pnlPercent)}">${formatPercent(t.pnlPercent)}</span></div>
             ${t.notes ? `<div class="detail-notes"><span class="detail-label">Notes</span><p>${t.notes}</p></div>` : ''}
@@ -1246,7 +1259,6 @@ class CryptoTraderApp {
             const current = parseFloat(p.currentPrice) || entry;
             const qty = parseFloat(p.quantity) || 0;
             const sl = parseFloat(p.stopLoss) || 0;
-            const tp = parseFloat(p.takeProfit) || 0;
             const lever = p.lever || '';
             const margin = parseFloat(p.margin) || 0;
             
@@ -1255,12 +1267,10 @@ class CryptoTraderApp {
             const upnl = hasOKXUpl ? parseFloat(p.upl) : (p.type === 'LONG' ? (current - entry) * qty : (entry - current) * qty);
             const upnlPct = hasOKXUpl && p.uplRatio ? (parseFloat(p.uplRatio) * 100) : (entry > 0 ? (p.type === 'LONG' ? ((current - entry) / entry * 100) : ((entry - current) / entry * 100)) : 0);
             
-            const range = tp - sl || 1;
-            const progress = Math.min(Math.max(((current - sl) / range) * 100, 0), 100);
-            
             const isOKX = (p.notes || '').includes('[OKX:');
             const leverBadge = lever ? `<span class="lever-badge">${lever}x</span>` : '';
             const marginInfo = margin > 0 ? `<div class="pos-stat"><span class="pos-label">Margin</span><span class="pos-value mono-text">$${formatWithCommas(margin)}</span></div>` : '';
+            const slInfo = sl > 0 ? `<div class="pos-stat"><span class="pos-label">Stop Loss</span><span class="pos-value mono-text negative">$${formatWithCommas(sl)}</span></div>` : '';
             
             return `
                 <div class="position-card ${getValueClass(upnl)}">
@@ -1282,16 +1292,7 @@ class CryptoTraderApp {
                         <div class="pos-stat"><span class="pos-label">Current</span><span class="pos-value mono-text${this.livePrices[p.pair] ? ' price-live' : ''}">$${formatWithCommas(current)}</span></div>
                         <div class="pos-stat"><span class="pos-label">Size</span><span class="pos-value mono-text">${formatWithCommas(qty)}</span></div>
                         ${marginInfo}
-                    </div>
-                    <div class="position-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width:${progress}%"></div>
-                            <div class="progress-marker" style="left:${progress}%"></div>
-                        </div>
-                        <div class="progress-labels">
-                            <span class="negative">SL: $${formatWithCommas(sl)}</span>
-                            <span class="positive">TP: $${formatWithCommas(tp)}</span>
-                        </div>
+                        ${slInfo}
                     </div>
                     <div class="position-footer">
                         <span class="pos-date">Opened ${formatDate(p.dateOpened)}</span>
@@ -1867,7 +1868,7 @@ class CryptoTraderApp {
             exitPrice: exitPrice,
             quantity: qty,
             stopLoss: pos.stopLoss || '',
-            takeProfit: pos.takeProfit || '',
+            takeProfit: '',
             pnl: (Math.round(pnl * 100) / 100).toFixed(2),
             pnlPercent: pnlPct.toFixed(2),
             status: 'CLOSED',
