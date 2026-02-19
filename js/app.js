@@ -764,25 +764,22 @@ class CryptoTraderApp {
     openTradeModal(editData = null) {
         const el = (id) => document.getElementById(id);
         
-        // Store original trade data for comparison on save
         this._editingTrade = editData || null;
         this.tradeScreenshotFile = null;
         this.tradeScreenshotUrl = '';
         
-        // Clear all fields manually (NOT form.reset which breaks flatpickr)
+        const readOnlyInfo = el('tradeReadOnlyInfo');
+        const fullForm = el('tradeFullForm');
+        
+        // Clear editable fields
         if (el('tradeRowIndex')) el('tradeRowIndex').value = '';
-        if (el('tradeEntry')) el('tradeEntry').value = '';
-        if (el('tradeExit')) el('tradeExit').value = '';
-        if (el('tradeQty')) el('tradeQty').value = '';
-        if (el('tradeSL')) el('tradeSL').value = '';
-        if (el('tradeDuration')) el('tradeDuration').value = '';
         if (el('tradeNotes')) el('tradeNotes').value = '';
         
-        // Setup amount inputs BEFORE setting values (prevents reformatting)
-        this.setupAmountInputs();
-        
-        // Populate pair dropdown
-        this.populatePairDropdown('tradePair', editData?.pair || '');
+        // Screenshot preview
+        const previewEl = el('tradeScreenshotPreview');
+        const removeBtn = el('tradeScreenshotRemove');
+        if (previewEl) previewEl.innerHTML = '';
+        if (removeBtn) removeBtn.style.display = 'none';
         
         // Populate strategy dropdown
         const stratSelect = el('tradeStrategy');
@@ -792,40 +789,59 @@ class CryptoTraderApp {
                 strategies.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
         }
         
-        // Setup flatpickr
-        const dateInput = el('tradeDate');
-        if (dateInput && !dateInput._flatpickr) {
-            flatpickr(dateInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d, Y', theme: 'dark' });
-        }
-        
-        // Screenshot preview
-        const previewEl = el('tradeScreenshotPreview');
-        const removeBtn = el('tradeScreenshotRemove');
-        if (previewEl) previewEl.innerHTML = '';
-        if (removeBtn) removeBtn.style.display = 'none';
-        
         if (editData) {
+            // === EDIT MODE: show read-only trade info ===
             if (el('tradeModalTitle')) el('tradeModalTitle').textContent = 'Edit Trade';
             if (el('tradeRowIndex')) el('tradeRowIndex').value = editData.rowIndex;
+            if (readOnlyInfo) readOnlyInfo.style.display = 'block';
+            if (fullForm) fullForm.style.display = 'none';
             
-            // Set date via flatpickr API (most reliable)
-            const dateStr = formatDateForInput(editData.date);
-            if (dateInput?._flatpickr && dateStr) {
-                dateInput._flatpickr.setDate(dateStr, true);
-            } else if (dateInput) {
-                dateInput.value = dateStr;
+            const pnl = parseFloat(editData.pnl) || 0;
+            const pnlPct = parseFloat(editData.pnlPercent) || 0;
+            
+            // Build read-only summary
+            if (readOnlyInfo) {
+                readOnlyInfo.innerHTML = `
+                    <div class="trade-ro-header">
+                        <span class="trade-ro-pair" style="color:${getPairColor(editData.pair)}">${editData.pair}</span>
+                        <span class="type-badge ${editData.type.toLowerCase()}">${editData.type === 'LONG' ? '↑ LONG' : '↓ SHORT'}</span>
+                        <span class="mono-text" style="color:var(--text-muted);font-size:0.75rem">${formatDate(editData.date)}</span>
+                    </div>
+                    <div class="trade-ro-grid">
+                        <div class="trade-ro-item">
+                            <span class="ro-label">Entry Price</span>
+                            <span class="ro-value">$${formatWithCommas(editData.entryPrice)}</span>
+                        </div>
+                        <div class="trade-ro-item">
+                            <span class="ro-label">Exit Price</span>
+                            <span class="ro-value">${editData.exitPrice ? '$' + formatWithCommas(editData.exitPrice) : '—'}</span>
+                        </div>
+                        <div class="trade-ro-item">
+                            <span class="ro-label">Quantity</span>
+                            <span class="ro-value">${formatWithCommas(editData.quantity)}</span>
+                        </div>
+                        <div class="trade-ro-item">
+                            <span class="ro-label">Stop Loss</span>
+                            <span class="ro-value">${editData.stopLoss ? '$' + formatWithCommas(editData.stopLoss) : '—'}</span>
+                        </div>
+                        <div class="trade-ro-item">
+                            <span class="ro-label">Duration</span>
+                            <span class="ro-value" style="color:var(--cyan)">${editData.duration || '—'}</span>
+                        </div>
+                        <div class="trade-ro-item">
+                            <span class="ro-label">Status</span>
+                            <span class="ro-value" style="color:${editData.status === 'CLOSED' ? 'var(--text-muted)' : 'var(--green)'}">${editData.status}</span>
+                        </div>
+                    </div>
+                    <div class="trade-ro-pnl">
+                        <span class="ro-label">P&L</span>
+                        <span class="pnl-amount ${getValueClass(pnl)}">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)} (${formatPercent(pnlPct)})</span>
+                    </div>
+                `;
             }
             
-            if (el('tradePair')) el('tradePair').value = editData.pair;
-            if (el('tradeType')) el('tradeType').value = editData.type;
+            // Set editable fields
             if (stratSelect) stratSelect.value = editData.strategy || '';
-            
-            // Set price values directly (raw numbers, no formatting)
-            if (el('tradeEntry')) el('tradeEntry').value = editData.entryPrice || '';
-            if (el('tradeExit')) el('tradeExit').value = editData.exitPrice || '';
-            if (el('tradeQty')) el('tradeQty').value = editData.quantity || '';
-            if (el('tradeSL')) el('tradeSL').value = editData.stopLoss || '';
-            if (el('tradeDuration')) el('tradeDuration').value = editData.duration || '';
             if (el('tradeNotes')) el('tradeNotes').value = editData.notes || '';
             
             // Load existing screenshot
@@ -836,8 +852,26 @@ class CryptoTraderApp {
                 if (removeBtn) removeBtn.style.display = 'inline-block';
             }
         } else {
+            // === NEW TRADE MODE: show full form ===
             this._editingTrade = null;
             if (el('tradeModalTitle')) el('tradeModalTitle').textContent = 'New Trade';
+            if (readOnlyInfo) readOnlyInfo.style.display = 'none';
+            if (fullForm) fullForm.style.display = 'block';
+            
+            // Clear form fields
+            if (el('tradeEntry')) el('tradeEntry').value = '';
+            if (el('tradeExit')) el('tradeExit').value = '';
+            if (el('tradeQty')) el('tradeQty').value = '';
+            if (el('tradeSL')) el('tradeSL').value = '';
+            if (el('tradeDuration')) el('tradeDuration').value = '';
+            
+            this.populatePairDropdown('tradePair', '');
+            this.setupAmountInputs();
+            
+            const dateInput = el('tradeDate');
+            if (dateInput && !dateInput._flatpickr) {
+                flatpickr(dateInput, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'M d, Y', theme: 'dark' });
+            }
             if (dateInput?._flatpickr) dateInput._flatpickr.setDate(getTodayStr(), true);
             else if (dateInput) dateInput.value = getTodayStr();
         }
@@ -853,95 +887,9 @@ class CryptoTraderApp {
         if (this.isSaving) return;
         const el = (id) => document.getElementById(id);
         const rowIndex = el('tradeRowIndex')?.value;
-        const original = this._editingTrade; // stored when modal opened
+        const original = this._editingTrade;
         
-        // Read date from flatpickr — multiple fallback approaches
-        const dateInput = el('tradeDate');
-        let date = '';
-        // Method 1: flatpickr selectedDates (most reliable)
-        if (dateInput?._flatpickr && dateInput._flatpickr.selectedDates.length > 0) {
-            const d = dateInput._flatpickr.selectedDates[0];
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            date = `${y}-${m}-${day}`;
-        }
-        // Method 2: flatpickr input value (hidden input with dateFormat)
-        if (!date && dateInput?.value) {
-            const v = dateInput.value.trim();
-            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) date = v;
-        }
-        // Method 3: read from flatpickr's internal _input 
-        if (!date && dateInput?._flatpickr) {
-            const raw = dateInput._flatpickr.input?.value || '';
-            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) date = raw;
-        }
-        // Method 4: use original date if nothing else works
-        if (!date && original) {
-            date = formatDateForInput(original.date);
-        }
-        
-        const pair = el('tradePair')?.value;
-        const type = el('tradeType')?.value;
-        const entryPrice = parseFormattedNumber(el('tradeEntry')?.value);
-        
-        console.log('[SaveTrade] date:', date, 'pair:', pair, 'entry:', entryPrice, 
-                    'exit:', el('tradeExit')?.value, 'rowIndex:', rowIndex);
-        
-        if (!date || !pair || entryPrice <= 0) {
-            this.showToast('Fill required fields (Date, Pair, Entry)', 'warning');
-            return;
-        }
-        
-        const exitPrice = parseFormattedNumber(el('tradeExit')?.value) || 0;
-        const quantity = parseFormattedNumber(el('tradeQty')?.value) || 1;
-        
-        // PnL logic: keep original OKX PnL unless user changed prices/qty/type
-        let pnl = 0, pnlPercent = 0;
-        if (original && exitPrice > 0) {
-            const origEntry = parseFloat(original.entryPrice) || 0;
-            const origExit = parseFloat(original.exitPrice) || 0;
-            const origQty = parseFloat(original.quantity) || 0;
-            const origType = original.type;
-            
-            const pricesChanged = Math.abs(origEntry - entryPrice) > 0.0001 || 
-                                  Math.abs(origExit - exitPrice) > 0.0001 ||
-                                  Math.abs(origQty - quantity) > 0.0001 ||
-                                  origType !== type;
-            
-            console.log('[SaveTrade] PnL check — origEntry:', origEntry, 'newEntry:', entryPrice,
-                        'origExit:', origExit, 'newExit:', exitPrice, 'origQty:', origQty, 
-                        'newQty:', quantity, 'changed:', pricesChanged);
-            
-            if (pricesChanged) {
-                // User changed prices → recalculate
-                pnl = type === 'LONG' ? (exitPrice - entryPrice) * quantity : (entryPrice - exitPrice) * quantity;
-                
-                // Extract leverage from notes for accurate PnL % (ROI)
-                const notes = original.notes || '';
-                const leverMatch = notes.match(/\|\s*(\d+)x/);
-                const leverage = leverMatch ? parseInt(leverMatch[1]) : 1;
-                
-                // PnL % = price change % * leverage (matches OKX ROI display)
-                const priceChangePct = type === 'LONG' 
-                    ? ((exitPrice - entryPrice) / entryPrice * 100) 
-                    : ((entryPrice - exitPrice) / entryPrice * 100);
-                pnlPercent = priceChangePct * leverage;
-                
-                console.log('[SaveTrade] PnL recalculated: $' + pnl.toFixed(2) + ' | ' + pnlPercent.toFixed(2) + '% | leverage:', leverage + 'x');
-            } else {
-                // Prices unchanged → keep original PnL (from OKX, includes fees/funding)
-                pnl = parseFloat(original.pnl) || 0;
-                pnlPercent = parseFloat(original.pnlPercent) || 0;
-                console.log('[SaveTrade] PnL preserved from OKX: $' + pnl + ' | ' + pnlPercent + '%');
-            }
-        } else if (exitPrice > 0) {
-            // New trade with exit price
-            pnl = type === 'LONG' ? (exitPrice - entryPrice) * quantity : (entryPrice - exitPrice) * quantity;
-            pnlPercent = type === 'LONG' ? ((exitPrice - entryPrice) / entryPrice * 100) : ((entryPrice - exitPrice) / entryPrice * 100);
-        }
-        
-        // Handle screenshot
+        // Handle screenshot upload
         let screenshotUrl = this.tradeScreenshotUrl || '';
         if (this.tradeScreenshotFile) {
             const base64Data = await new Promise((resolve, reject) => {
@@ -955,42 +903,85 @@ class CryptoTraderApp {
             
             if (cryptoAPI.isConfigured()) {
                 try {
+                    const pair = original?.pair || el('tradePair')?.value || 'TRADE';
                     const uploadResult = await cryptoAPI.uploadScreenshot({
                         base64Data, mimeType: this.tradeScreenshotFile.type,
-                        fileName: `${pair.replace('/', '-')}_trade_${date}_${Date.now()}.${this.tradeScreenshotFile.name.split('.').pop()}`
+                        fileName: `${pair.replace('/', '-')}_trade_${Date.now()}.${this.tradeScreenshotFile.name.split('.').pop()}`
                     });
                     screenshotUrl = uploadResult.downloadUrl || uploadResult.fileUrl || fullDataUrl;
                 } catch (e) { console.warn('Screenshot upload failed:', e); }
             }
         }
         
-        const data = {
-            date, pair, type,
-            strategy: el('tradeStrategy')?.value || '',
-            entryPrice, exitPrice: exitPrice || '',
-            quantity,
-            stopLoss: parseFormattedNumber(el('tradeSL')?.value) || '',
-            takeProfit: '',
-            pnl: pnl.toFixed(2),
-            pnlPercent: pnlPercent.toFixed(2),
-            status: exitPrice > 0 ? 'CLOSED' : 'OPEN',
-            notes: el('tradeNotes')?.value || '',
-            duration: el('tradeDuration')?.value || (original?.duration || ''),
-            screenshotUrl: screenshotUrl,
-            // Always preserve original dateOpened/dateClosed
-            dateOpened: original?.dateOpened || '',
-            dateClosed: original?.dateClosed || ''
-        };
+        let data;
         
-        if (rowIndex) data.rowIndex = parseInt(rowIndex);
-        
-        console.log('[SaveTrade] Final data:', JSON.stringify({
-            date: data.date, pair: data.pair, entryPrice: data.entryPrice, 
-            exitPrice: data.exitPrice, pnl: data.pnl, pnlPercent: data.pnlPercent,
-            dateOpened: data.dateOpened, dateClosed: data.dateClosed,
-            duration: data.duration, rowIndex: data.rowIndex,
-            hasScreenshot: !!data.screenshotUrl
-        }));
+        if (original && rowIndex) {
+            // === EDIT MODE: keep all OKX data, only update strategy/screenshot/notes ===
+            data = {
+                date: original.date,
+                pair: original.pair,
+                type: original.type,
+                strategy: el('tradeStrategy')?.value || original.strategy || '',
+                entryPrice: original.entryPrice,
+                exitPrice: original.exitPrice || '',
+                quantity: original.quantity,
+                stopLoss: original.stopLoss || '',
+                takeProfit: '',
+                pnl: original.pnl,
+                pnlPercent: original.pnlPercent,
+                status: original.status,
+                notes: el('tradeNotes')?.value || '',
+                duration: original.duration || '',
+                screenshotUrl: screenshotUrl,
+                dateOpened: original.dateOpened || '',
+                dateClosed: original.dateClosed || '',
+                rowIndex: parseInt(rowIndex)
+            };
+        } else {
+            // === NEW TRADE MODE: build from form inputs ===
+            const dateInput = el('tradeDate');
+            let date = '';
+            if (dateInput?._flatpickr && dateInput._flatpickr.selectedDates.length > 0) {
+                const d = dateInput._flatpickr.selectedDates[0];
+                date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } else if (dateInput) {
+                date = dateInput.value;
+            }
+            
+            const pair = el('tradePair')?.value;
+            const type = el('tradeType')?.value;
+            const entryPrice = parseFormattedNumber(el('tradeEntry')?.value);
+            
+            if (!date || !pair || entryPrice <= 0) {
+                this.showToast('Fill required fields (Date, Pair, Entry)', 'warning');
+                return;
+            }
+            
+            const exitPrice = parseFormattedNumber(el('tradeExit')?.value) || 0;
+            const quantity = parseFormattedNumber(el('tradeQty')?.value) || 1;
+            
+            let pnl = 0, pnlPercent = 0;
+            if (exitPrice > 0) {
+                pnl = type === 'LONG' ? (exitPrice - entryPrice) * quantity : (entryPrice - exitPrice) * quantity;
+                pnlPercent = type === 'LONG' ? ((exitPrice - entryPrice) / entryPrice * 100) : ((entryPrice - exitPrice) / entryPrice * 100);
+            }
+            
+            data = {
+                date, pair, type,
+                strategy: el('tradeStrategy')?.value || '',
+                entryPrice, exitPrice: exitPrice || '',
+                quantity,
+                stopLoss: parseFormattedNumber(el('tradeSL')?.value) || '',
+                takeProfit: '',
+                pnl: pnl.toFixed(2),
+                pnlPercent: pnlPercent.toFixed(2),
+                status: exitPrice > 0 ? 'CLOSED' : 'OPEN',
+                notes: el('tradeNotes')?.value || '',
+                duration: el('tradeDuration')?.value || '',
+                screenshotUrl: screenshotUrl,
+                dateOpened: '', dateClosed: ''
+            };
+        }
         
         this.isSaving = true;
         try {
@@ -1008,7 +999,6 @@ class CryptoTraderApp {
                     data.rowIndex = Date.now();
                     this.data.trades.push(data);
                 }
-                // Save screenshot locally
                 if (screenshotUrl && data.rowIndex) {
                     try { localStorage.setItem(`ctp_screenshot_${data.rowIndex || rowIndex}`, screenshotUrl); } catch (e) {}
                 }
@@ -1023,7 +1013,7 @@ class CryptoTraderApp {
             this.showToast(error.message, 'error');
         } finally { this.isSaving = false; }
     }
-    
+
     editTrade(rowIndex) {
         const item = this.data.trades.find(t => t.rowIndex === rowIndex);
         if (item) this.openTradeModal(item);
